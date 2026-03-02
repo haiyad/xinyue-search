@@ -59,13 +59,8 @@
                 if (!keyword.value) {
                     return showMessage('请输入你要搜索的内容~', 'error');
                 }
-                const currentUrl = window.location.href;
                 const targetUrl = `/s/${keyword.value}.html`;
-                if (currentUrl.includes('/s/') || currentUrl.includes('/d/')) {
-                    window.location.href = targetUrl;
-                } else {
-                    window.open(targetUrl, '_blank');
-                }
+                window.location.href = targetUrl;
             };
             
             // 保存按钮点击事件

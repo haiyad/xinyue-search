@@ -94,7 +94,7 @@ class Other extends QfShop
                         continue;
                     }
                 }
-                if (config('qfshop.is_quan_type') != 1 && $is_show != 1) {
+                if (config('qfshop.is_quan_type') != 1 && $is_show != 1 && $this->hasPanAccount($item['is_type'])) {
                     $item['url'] = encryptObject($item['url']);
                 }
                 echo "data: " . str_replace(["\n", "\r"], '', json_encode($item, JSON_UNESCAPED_UNICODE)) . "\n\n";
@@ -1043,5 +1043,28 @@ class Other extends QfShop
         });
 
         return jok('临时资源删除成功', $abc);
+    }
+
+    /**
+     * 检查对应网盘账号是否已配置
+     * @param int $isType 网盘类型 0夸克 2百度 3UC 4迅雷
+     * @return bool
+     */
+    private function hasPanAccount($isType)
+    {
+        $configKeys = [
+            0 => 'quark_cookie',
+            2 => 'baidu_cookie',
+            3 => 'uc_cookie',
+            4 => 'xunlei_cookie',
+        ];
+
+        $configKey = $configKeys[$isType] ?? null;
+        if ($configKey === null) {
+            return false;
+        }
+
+        $cookie = Config('qfshop.' . $configKey);
+        return !empty($cookie);
     }
 }

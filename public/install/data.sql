@@ -39,13 +39,13 @@ CREATE TABLE `qf_access`  (
 DROP TABLE IF EXISTS `qf_admin`;
 CREATE TABLE `qf_admin`  (
   `admin_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'UID',
-  `admin_account` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '帐号',
-  `admin_password` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '密码',
-  `admin_salt` varchar(4) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '密码盐',
-  `admin_name` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '用户昵称',
-  `admin_idcard` varchar(18) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '身份证',
-  `admin_truename` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '真实姓名',
-  `admin_email` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '邮箱',
+  `admin_account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '帐号',
+  `admin_password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '密码',
+  `admin_salt` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '密码盐',
+  `admin_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '用户昵称',
+  `admin_idcard` varchar(18) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '身份证',
+  `admin_truename` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '真实姓名',
+  `admin_email` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '邮箱',
   `admin_money` decimal(9, 2) NOT NULL DEFAULT 0.00 COMMENT '余额',
   `admin_group` int(11) NOT NULL DEFAULT 0 COMMENT '用户组',
   `admin_ipreg` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '注册IP',
@@ -54,8 +54,8 @@ CREATE TABLE `qf_admin`  (
   `admin_updatetime` int(11) NOT NULL DEFAULT 0 COMMENT '修改时间',
   PRIMARY KEY (`admin_id`) USING BTREE,
   INDEX `admin_group`(`admin_group`) USING BTREE,
-  INDEX `admin_name`(`admin_name`) USING BTREE,
-  INDEX `admin_password`(`admin_password`) USING BTREE,
+  INDEX `admin_name`(`admin_name`(191)) USING BTREE,
+  INDEX `admin_password`(`admin_password`(191)) USING BTREE,
   INDEX `admin_account`(`admin_account`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
 
@@ -98,10 +98,10 @@ CREATE TABLE `qf_auth`  (
 DROP TABLE IF EXISTS `qf_conf`;
 CREATE TABLE `qf_conf`  (
   `conf_id` int(11) NOT NULL AUTO_INCREMENT,
-  `conf_key` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '参数名',
-  `conf_value` text CHARACTER SET utf8 COLLATE utf8_general_ci COMMENT '参数值',
-  `conf_title` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT '' COMMENT '参数名称',
-  `conf_desc` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT '' COMMENT '参数描述',
+  `conf_key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '参数名',
+  `conf_value` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT '参数值',
+  `conf_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '' COMMENT '参数名称',
+  `conf_desc` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '' COMMENT '参数描述',
   `conf_int` int(11) NOT NULL DEFAULT 0 COMMENT '参数到期',
   `conf_spec` int(11) NOT NULL DEFAULT 0 COMMENT '文本类型',
   `conf_content` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '单选多选等文本类型的数据集',
@@ -112,7 +112,7 @@ CREATE TABLE `qf_conf`  (
   `conf_createtime` int(11) NOT NULL DEFAULT 0,
   `conf_updatetime` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`conf_id`) USING BTREE,
-  INDEX `conf_key`(`conf_key`) USING BTREE
+  INDEX `conf_key`(`conf_key`(191)) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 52 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '配置表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -195,11 +195,11 @@ CREATE TABLE `qf_days`  (
 DROP TABLE IF EXISTS `qf_feedback`;
 CREATE TABLE `qf_feedback`  (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `content` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL,
+  `content` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `create_time` int(11) NOT NULL DEFAULT 0,
   `update_time` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = MyISAM AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = MyISAM AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for qf_group
@@ -207,8 +207,8 @@ CREATE TABLE `qf_feedback`  (
 DROP TABLE IF EXISTS `qf_group`;
 CREATE TABLE `qf_group`  (
   `group_id` int(11) NOT NULL AUTO_INCREMENT,
-  `group_name` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '管理组名称',
-  `group_desc` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '管理组描述',
+  `group_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '管理组名称',
+  `group_desc` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '管理组描述',
   `group_status` int(11) NOT NULL DEFAULT 0 COMMENT '1被禁用',
   `group_createtime` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
   `group_updatetime` int(11) NOT NULL DEFAULT 0 COMMENT '修改时间',
@@ -240,24 +240,24 @@ CREATE TABLE `qf_log`  (
 DROP TABLE IF EXISTS `qf_node`;
 CREATE TABLE `qf_node`  (
   `node_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '功能ID',
-  `node_title` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '功能名称',
-  `node_desc` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '功能描述',
-  `node_module` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'api' COMMENT '模块',
-  `node_controller` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '控制器',
-  `node_action` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '方法',
+  `node_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '功能名称',
+  `node_desc` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '功能描述',
+  `node_module` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'api' COMMENT '模块',
+  `node_controller` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '控制器',
+  `node_action` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '方法',
   `node_pid` int(11) NOT NULL DEFAULT 0 COMMENT '父ID',
   `node_order` int(11) NOT NULL DEFAULT 0 COMMENT '排序ID',
   `node_show` int(11) NOT NULL DEFAULT 1 COMMENT '1显示到菜单',
-  `node_icon` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '图标',
-  `node_extend` text CHARACTER SET utf8 COLLATE utf8_general_ci COMMENT '扩展数据',
+  `node_icon` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '图标',
+  `node_extend` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT '扩展数据',
   `node_status` int(11) NOT NULL DEFAULT 0 COMMENT '1被禁用',
   `node_createtime` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
   `node_updatetime` int(11) NOT NULL DEFAULT 0 COMMENT '修改时间',
   PRIMARY KEY (`node_id`) USING BTREE,
   INDEX `auth_pid`(`node_pid`) USING BTREE,
-  INDEX `node_module`(`node_module`) USING BTREE,
-  INDEX `node_controller`(`node_controller`) USING BTREE,
-  INDEX `node_action`(`node_action`) USING BTREE
+  INDEX `node_module`(`node_module`(191)) USING BTREE,
+  INDEX `node_controller`(`node_controller`(191)) USING BTREE,
+  INDEX `node_action`(`node_action`(191)) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 119 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '功能节点表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -297,6 +297,9 @@ CREATE TABLE `qf_source`  (
   `is_user` tinyint(3) NOT NULL DEFAULT 0 COMMENT '状态 0=后台添加 1=用户添加',
   `fid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '夸克标识',
   `is_type` int(11) NOT NULL DEFAULT 0 COMMENT '0夸克网盘 1阿里网盘 2百度网盘 3UC网盘 4迅雷网盘',
+  `sort` int(11) NOT NULL DEFAULT 0 COMMENT '排序',
+  `is_top` tinyint(3) NOT NULL DEFAULT 0 COMMENT '是否置顶 0=否 1=是',
+  `account_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '添加人',
   `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '提取码',
   `source_category_id` int(11) NOT NULL DEFAULT 0 COMMENT '分类ID',
   `vod_content` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '资源介绍',
@@ -341,18 +344,18 @@ INSERT INTO `qf_source_category` VALUES (5, '综艺', '', 995, 0, 1, 1, 0, 17251
 DROP TABLE IF EXISTS `qf_source_log`;
 CREATE TABLE `qf_source_log`  (
   `source_log_id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '转存任务名称',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '转存任务名称',
   `total_num` int(11) NOT NULL DEFAULT 0 COMMENT '转存总数',
   `new_num` int(11) NOT NULL DEFAULT 0 COMMENT '新增数',
   `update_num` int(11) NOT NULL DEFAULT 0 COMMENT '更新数(更新资源地址)',
   `skip_num` int(11) NOT NULL DEFAULT 0 COMMENT '重复跳过数',
   `fail_num` int(11) NOT NULL DEFAULT 0 COMMENT '失败数',
-  `fail_dec` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL COMMENT '失败原因',
+  `fail_dec` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '失败原因',
   `create_time` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
   `update_time` int(11) NOT NULL DEFAULT 0 COMMENT '修改时间',
   `end_time` int(11) NOT NULL DEFAULT 0 COMMENT '结束时间',
   PRIMARY KEY (`source_log_id`) USING BTREE
-) ENGINE = MyISAM AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = MyISAM AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for qf_token

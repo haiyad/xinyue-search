@@ -4,6 +4,7 @@ namespace app\admin\controller;
 
 use think\App;
 use think\facade\Filesystem;
+use think\exception\ValidateException;
 use app\admin\QfShop;
 use app\model\Source as SourceModel;
 use app\model\SourceLog as SourceLogModel;
@@ -63,7 +64,13 @@ class Source extends QfShop
             "url" => "资源地址必须填写",
         ];
         $this->model = new SourceModel();
-        $this->SourceLogModel = new SourceLogModel();
+    }
+
+    public function __call($name, $arguments) {
+        if ($name == 'SourceLogModel') {
+            return new SourceLogModel();
+        }
+        return parent::__call($name, $arguments);
     }
 
 
@@ -221,97 +228,163 @@ class Source extends QfShop
         }
         try {
             $file = request()->file('file');
-            try {
-                validate(['file' => 'filesize:' . config("qfshop.upload_max_file") . '|fileExt:' . config("qfshop.upload_file_type")])
-                    ->check(['file' => $file]);
-                $saveName = Filesystem::putFile('excel', $file, 'excel.csv');
-
-                ini_set("memory_limit", -1);
-
-                $file_name = app()->getRootPath() . "public/uploads/" . $saveName;
-
-                $extension = pathinfo($file_name, PATHINFO_EXTENSION);
-                if ($extension == 'csv') {
-                    return jerr('转成xlsx格式吧');
-                    $PHPReader = new \PHPExcel_Reader_CSV();
-                    $encoding = $this->detectFileEncoding($file_name);
-                    // if (!$encoding || strtoupper($encoding) == 'UTF-8') {
-                    //     $encoding = 'GBK'; // 尝试将其强制转为GBK
-                    // }
-                    $PHPReader->setInputEncoding($encoding);
-                    $PHPReader->setDelimiter(',');
-                } elseif ($extension == 'xlsx') {
-                    $PHPReader = new \PHPExcel_Reader_Excel2007();
-                } elseif ($extension == 'xls') {
-                    $PHPReader = new \PHPExcel_Reader_Excel5();
-                } else {
-                    return jerr('不支持的文件类型');
-                }
-
-                //载入文件
-                $objExcel = $PHPReader->load($file_name);
-                $excel_array = $objExcel->getSheet(0)->toArray();
-                array_shift($excel_array);  //删除第一个数组(标题);
-                array_shift($excel_array);  //删除第二个数组;
-                $data = [];
-                $i = 0;
-                $existing_data = [];
-
-                // 先查询数据库中所有已存在的 title 和 is_type 组合
-                $existing_records = $this->model->field('title, is_type')->select()->toArray();
-                // 将查询结果转换为关联数组用于快速查找
-                foreach ($existing_records as $record) {
-                    $existing_data[$record['title'] . '_' . $record['is_type']] = true;
-                }
-
-                //删除这个文件
-                unlink("./uploads/" . $saveName);
-
-                foreach ($excel_array as $k => $v) {
-                    $title = isset($v[0]) ? trim($v[0]) : '';
-                    $url = isset($v[1]) ? trim($v[1]) : '';
-                    $source_category_id = isset($v[2]) ? trim($v[2]) : 0;
-                    $account_name = isset($v[3]) ? trim($v[3]) : '';
-                    $description = isset($v[4]) ? trim($v[4]) : '';
-                    $vod_content = isset($v[5]) ? trim($v[5]) : '';
-
-                    $is_type = $url ? determineIsType($url) : 0;
-
-                    $key = $title . '_' . $is_type;
-
-                    if (!isset($existing_data[$key]) && $url) {
-                        $record = [];
-                        $record['title'] = $title;
-                        $record['url'] = $url;
-                        $record['is_type'] = $is_type;
-                        $record['source_category_id'] = intval($source_category_id);
-                        $record['account_name'] = $account_name;
-                        
-                        if (empty($description) && !empty($title)) {
-                            $description = $this->generateKeywordsFromBaidu($title);
-                        }
-                        
-                        $record['description'] = $description;
-                        $record['vod_content'] = $vod_content;
-                        $record['update_time'] = time();
-                        $record['create_time'] = time();
-                        
-                        $data[] = $record;
-                        $existing_data[$key] = true;
-                        $i++;
-                    }
-                }
-
-
-                $this->model->insertAll($data);
-                if ($i == 0) {
-                    return jok('无可导入的资源，请检查表格格式');
-                }
-                return jok('导入成功' . $i . '个资源');
-            } catch (ValidateException $e) {
-                return jerr($e->getMessage());
+            if (!$file) {
+                return jerr('请选择文件');
             }
+            
+            $fileInfo = [
+                'originalName' => $file->getOriginalName(),
+                'extension' => $file->extension(),
+                'size' => $file->getSize(),
+            ];
+            
+            \think\facade\Log::info('上传文件信息：' . json_encode($fileInfo, JSON_UNESCAPED_UNICODE));
+            
+            try {
+                validate(['file' => 'filesize:10485760|fileExt:xlsx,xls'])
+                    ->check(['file' => $file]);
+            } catch (\Exception $e) {
+                \think\facade\Log::error('文件验证失败：' . $e->getMessage());
+                return jerr('文件验证失败：' . $e->getMessage());
+            }
+            
+            $saveName = Filesystem::putFile('excel', $file);
+            
+            if (!$saveName) {
+                \think\facade\Log::error('文件保存失败：uploads 目录可能不存在或无写入权限');
+                return jerr('文件保存失败，请检查 uploads 目录权限');
+            }
+            
+            \think\facade\Log::info('文件保存成功：' . $saveName);
+
+            ini_set("memory_limit", -1);
+            set_time_limit(0);
+
+            $file_name = Filesystem::path($saveName);
+            
+            \think\facade\Log::info('完整文件路径：' . $file_name);
+            
+            if (!file_exists($file_name)) {
+                \think\facade\Log::error('文件不存在：' . $file_name);
+                \think\facade\Log::error('尝试查找的路径：' . Filesystem::path(''));
+                return jerr('文件不存在');
+            }
+
+            $extension = pathinfo($file_name, PATHINFO_EXTENSION);
+            if ($extension == 'csv') {
+                return jerr('转成xlsx格式吧');
+                $PHPReader = new \PHPExcel_Reader_CSV();
+                $encoding = $this->detectFileEncoding($file_name);
+                $PHPReader->setInputEncoding($encoding);
+                $PHPReader->setDelimiter(',');
+            } elseif ($extension == 'xlsx') {
+                $PHPReader = new \PHPExcel_Reader_Excel2007();
+            } elseif ($extension == 'xls') {
+                $PHPReader = new \PHPExcel_Reader_Excel5();
+            } else {
+                return jerr('不支持的文件类型');
+            }
+
+            $objExcel = $PHPReader->load($file_name);
+            $excel_array = $objExcel->getSheet(0)->toArray();
+            
+            \think\facade\Log::info('Excel 数据行数：' . count($excel_array));
+            
+            array_shift($excel_array);
+            array_shift($excel_array);
+            
+            \think\facade\Log::info('处理后数据行数：' . count($excel_array));
+            
+            $data = [];
+            $i = 0;
+            $existing_data = [];
+
+            $existing_records = $this->model->field('title, is_type')->select()->toArray();
+            
+            \think\facade\Log::info('现有记录数：' . count($existing_records));
+            
+            foreach ($existing_records as $record) {
+                $existing_data[$record['title'] . '_' . $record['is_type']] = true;
+            }
+
+            Filesystem::delete($saveName);
+
+            foreach ($excel_array as $k => $v) {
+                $title = isset($v[0]) ? trim($v[0]) : '';
+                $url = isset($v[1]) ? trim($v[1]) : '';
+                $source_category_id = isset($v[2]) ? trim($v[2]) : 0;
+                $account_name = isset($v[3]) ? trim($v[3]) : '';
+                $description = isset($v[4]) ? trim($v[4]) : '';
+                $vod_content = isset($v[5]) ? trim($v[5]) : '';
+
+                $is_type = $url ? determineIsType($url) : 0;
+
+                $key = $title . '_' . $is_type;
+
+                if (!isset($existing_data[$key]) && $url) {
+                    $record = [];
+                    $record['title'] = $title;
+                    $record['url'] = $url;
+                    $record['is_type'] = $is_type;
+                    $record['source_category_id'] = intval($source_category_id);
+                    $record['account_name'] = $account_name;
+
+                    if (empty($description) && !empty($title)) {
+                        $description = $this->generateKeywordsFromBaidu($title);
+                    }
+                    
+                    $record['description'] = $description;
+                    $record['vod_content'] = $vod_content;
+                    $record['update_time'] = time();
+                    $record['create_time'] = time();
+                    $record['status'] = 1;
+                    $record['is_delete'] = 0;
+                    $record['is_time'] = 0;
+                    $record['is_user'] = 0;
+                    $record['page_views'] = 0;
+                    $record['vod_pic'] = '';
+                    $record['sort'] = 0;
+                    $record['is_top'] = 0;
+                    $record['content'] = '';
+                    $record['code'] = '';
+                    $record['fid'] = '';
+
+                    $data[] = $record;
+                    $existing_data[$key] = true;
+                    $i++;
+                }
+            }
+            
+            \think\facade\Log::info('准备插入数据数：' . count($data));
+            
+            if (empty($data)) {
+                \think\facade\Log::error('没有可导入的数据');
+                return jok('无可导入的资源，请检查表格格式');
+            }
+
+            $this->model->autoWriteTimestamp = false;
+            
+            try {
+                $result = $this->model->insertAll($data);
+                \think\facade\Log::info('插入结果：' . $result);
+            } catch (\Exception $e) {
+                \think\facade\Log::error('插入失败：' . $e->getMessage());
+                \think\facade\Log::error('错误堆栈：' . $e->getTraceAsString());
+                return jerr('数据库插入失败：' . $e->getMessage());
+            }
+            
+            $this->model->autoWriteTimestamp = true;
+            if ($i == 0) {
+                return jok('无可导入的资源，请检查表格格式');
+            }
+            return jok('导入成功' . $i . '个资源');
+        } catch (ValidateException $e) {
+            \think\facade\Log::error('验证异常：' . $e->getMessage());
+            \think\facade\Log::error('验证异常堆栈：' . $e->getTraceAsString());
+            return jerr($e->getMessage());
         } catch (\Exception $error) {
+            \think\facade\Log::error('上传文件异常：' . $error->getMessage());
+            \think\facade\Log::error('异常堆栈：' . $error->getTraceAsString());
             return jerr('上传文件失败，请检查你的文件！');
         }
     }
@@ -472,7 +545,7 @@ class Source extends QfShop
                 'update_time' => time()
             ]);
             return jok('批量修改分类成功');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return jerr('批量修改分类失败');
         }
     }
@@ -503,7 +576,9 @@ class Source extends QfShop
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             $response = curl_exec($ch);
-            curl_close($ch);
+            if (is_resource($ch)) {
+                curl_close($ch);
+            }
             
             $data = json_decode($response, true);
             if ($data && isset($data['g'])) {
@@ -515,7 +590,7 @@ class Source extends QfShop
             } else {
                 return jerr('关键词生成失败');
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return jerr('网络错误');
         }
     }
@@ -538,7 +613,9 @@ class Source extends QfShop
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             curl_setopt($ch, CURLOPT_TIMEOUT, 5);
             $response = curl_exec($ch);
-            curl_close($ch);
+            if (is_resource($ch)) {
+                curl_close($ch);
+            }
             
             $data = json_decode($response, true);
             if ($data && isset($data['g'])) {

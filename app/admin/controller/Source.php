@@ -7,6 +7,7 @@ use think\facade\Filesystem;
 use app\admin\QfShop;
 use app\model\Source as SourceModel;
 use app\model\SourceLog as SourceLogModel;
+use app\model\SourceCategory;
 use quarkPlugin\QuarkPlugin;
 
 class Source extends QfShop
@@ -31,7 +32,8 @@ class Source extends QfShop
             "sort",
             "is_top",
             "vod_content",
-            "is_type"
+            "is_type",
+            "account_name"
         ];
         $this->updateFields = [
             //允许更新的字段列表
@@ -44,7 +46,8 @@ class Source extends QfShop
             "sort",
             "is_top",
             "vod_content",
-            "is_type"
+            "is_type",
+            "account_name"
         ];
         $this->insertRequire = [
             //添加时必须填写的字段
@@ -71,23 +74,24 @@ class Source extends QfShop
      */
     public function getList()
     {
-        //校验Access与RBAC
         $error = $this->access();
         if ($error) {
             return $error;
         }
-        //从请求中获取筛选数据的数组
         $map = $this->getDataFilterFromRequest();
         $map[] = ['is_delete', '=', 0];
         if (!empty(input('source_category_id'))) {
             $map[] = ['source_category_id', '=', input('source_category_id')];
         }
+        if (!empty(input('is_type')) && input('is_type') !== '') {
+            $map[] = ['is_type', '=', input('is_type')];
+        }
+        if (!empty(input('account_name'))) {
+            $map[] = ['account_name', '=', input('account_name')];
+        }
         empty(input('keyword')) ?: $map[] = ['title|description', 'like', '%' . input('keyword') . '%'];
-        //从请求中获取排序方式
         $order = $this->getorderfromRequest();
-        //设置Model中的 per_page
         $this->setGetListPerPage();
-        //查询数据
         $dataList = $this->model->getListByPage($map, $order, $this->selectList);
         return jok('数据获取成功', $dataList);
     }
@@ -248,6 +252,7 @@ class Source extends QfShop
                 $objExcel = $PHPReader->load($file_name);
                 $excel_array = $objExcel->getSheet(0)->toArray();
                 array_shift($excel_array);  //删除第一个数组(标题);
+                array_shift($excel_array);  //删除第二个数组;
                 $data = [];
                 $i = 0;
                 $existing_data = [];
@@ -263,36 +268,35 @@ class Source extends QfShop
                 unlink("./uploads/" . $saveName);
 
                 foreach ($excel_array as $k => $v) {
-                    $patterns = '/^\d+\.|\d+\-/';
-                    $title = '';
-                    $url = '';
-
-                    for ($index = 1; $index <= 3; $index++) {
-                        // 检查 $v[$index] 是否存在
-                        if (isset($v[$index]) && preg_match('/http[^ ]+/', $v[$index], $matches)) {
-                            // 检查 $v[$index - 1] 是否存在
-                            if (isset($v[$index - 1])) {
-                                $title = preg_replace($patterns, '', $v[$index - 1]);
-                            }
-                            $url = $matches[0];
-                            break;
-                        }
-                    }
+                    $title = isset($v[0]) ? trim($v[0]) : '';
+                    $url = isset($v[1]) ? trim($v[1]) : '';
+                    $source_category_id = isset($v[2]) ? trim($v[2]) : 0;
+                    $account_name = isset($v[3]) ? trim($v[3]) : '';
+                    $description = isset($v[4]) ? trim($v[4]) : '';
+                    $vod_content = isset($v[5]) ? trim($v[5]) : '';
 
                     $is_type = $url ? determineIsType($url) : 0;
 
                     $key = $title . '_' . $is_type;
 
-                    // 先检查内存缓存的 existing_data，避免重复插入
                     if (!isset($existing_data[$key]) && $url) {
-                        $data[$k]['title'] = $title;
-                        $data[$k]['url'] = $url;
-                        $data[$k]["is_type"] = $is_type;
-                        $data[$k]['source_category_id'] = input('source_category_id') ?? 0;
-                        $data[$k]['update_time'] = time();
-                        $data[$k]['create_time'] = time();
-
-                        // 将新插入的记录加入缓存，防止后续重复处理
+                        $record = [];
+                        $record['title'] = $title;
+                        $record['url'] = $url;
+                        $record['is_type'] = $is_type;
+                        $record['source_category_id'] = intval($source_category_id);
+                        $record['account_name'] = $account_name;
+                        
+                        if (empty($description) && !empty($title)) {
+                            $description = $this->generateKeywordsFromBaidu($title);
+                        }
+                        
+                        $record['description'] = $description;
+                        $record['vod_content'] = $vod_content;
+                        $record['update_time'] = time();
+                        $record['create_time'] = time();
+                        
+                        $data[] = $record;
                         $existing_data[$key] = true;
                         $i++;
                     }
@@ -350,16 +354,26 @@ class Source extends QfShop
             }
         }
 
-        $field = 'title,url';
+        $field = 'title,url,source_category_id,account_name,description,vod_content';
         $dataList = $this->model->field($field)->where($map)->select();
+        // 处理数据
+        $data = [];
+        foreach ($dataList as $item) {
+            $data[] = $item;
+        }
         $excelField = [
             "title" => "资源名称",
             "url" => "资源地址",
+            "source_category_id" => "资源分类",
+            "account_name" => "添加人",
+            "description" => "关键字搜索",
+            "vod_content" => "资源介绍",
         ];
-        $data = $dataList->toArray();
 
         $this->excelField = $excelField;
-        $this->exportExcelData($dataList);
+        // 转换为集合对象，以便调用toArray()方法
+        $dataCollection = collect($data);
+        $this->exportExcelData($dataCollection);
     }
 
     /**
@@ -429,5 +443,114 @@ class Source extends QfShop
             return jerr($result['message']);
         }
         return jok('获取成功', $result['data']);
+    }
+
+    /**
+     * 批量修改分类
+     *
+     * @return void
+     */
+    public function batchUpdateCategory()
+    {
+        $error = $this->access();
+        if ($error) {
+            return $error;
+        }
+        
+        $source_ids = input('source_ids');
+        $source_category_id = input('source_category_id');
+        
+        if (empty($source_ids) || empty($source_category_id)) {
+            return jerr('参数不能为空');
+        }
+        
+        $ids = explode(',', $source_ids);
+        
+        try {
+            $this->model->where('source_id', 'in', $ids)->update([
+                'source_category_id' => $source_category_id,
+                'update_time' => time()
+            ]);
+            return jok('批量修改分类成功');
+        } catch (Exception $e) {
+            return jerr('批量修改分类失败');
+        }
+    }
+    
+    /**
+     * 生成关键词
+     *
+     * @return void
+     */
+    public function generateKeywords()
+    {
+        $error = $this->access();
+        if ($error) {
+            return $error;
+        }
+        
+        $wd = input('wd');
+        if (empty($wd)) {
+            return jerr('关键词不能为空');
+        }
+        
+        $url = 'https://www.baidu.com/sugrec?pre=1&p=3&ie=utf-8&json=1&prod=pc&from=pc_web&wd=' . urlencode($wd);
+        
+        try {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            $response = curl_exec($ch);
+            curl_close($ch);
+            
+            $data = json_decode($response, true);
+            if ($data && isset($data['g'])) {
+                $keywords = [];
+                foreach ($data['g'] as $item) {
+                    $keywords[] = $item['q'];
+                }
+                return jok('关键词生成成功', $keywords);
+            } else {
+                return jerr('关键词生成失败');
+            }
+        } catch (Exception $e) {
+            return jerr('网络错误');
+        }
+    }
+    
+    /**
+     * 从百度生成关键词（内部方法）
+     *
+     * @param string $title 资源标题
+     * @return string 关键词字符串
+     */
+    private function generateKeywordsFromBaidu($title)
+    {
+        $url = 'https://www.baidu.com/sugrec?pre=1&p=3&ie=utf-8&json=1&prod=pc&from=pc_web&wd=' . urlencode($title);
+        
+        try {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            $response = curl_exec($ch);
+            curl_close($ch);
+            
+            $data = json_decode($response, true);
+            if ($data && isset($data['g'])) {
+                $keywords = [];
+                foreach ($data['g'] as $item) {
+                    $keywords[] = $item['q'];
+                }
+                return implode("\n", $keywords);
+            }
+        } catch (Exception $e) {
+        }
+        
+        return '';
     }
 }

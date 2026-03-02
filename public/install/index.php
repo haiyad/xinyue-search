@@ -1,5 +1,11 @@
 <?php
 header("Content-type: text/html; charset=utf-8");
+//设置会话保存路径
+$session_path = __DIR__ . '/tmp';
+if (!file_exists($session_path)) {
+    mkdir($session_path, 0777, true);
+}
+session_save_path($session_path);
 //开启session
 session_start();
 //配置信息

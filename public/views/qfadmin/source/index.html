@@ -4,6 +4,9 @@
 <head>
     <title>{$node.node_title}</title>
     {include file="common/header"/}
+    <script>
+        var adminName = '{$adminInfo['admin_account']}';
+    </script>
 
     <el-form :inline="true" @submit.native.prevent>
         <el-form-item>
@@ -12,12 +15,31 @@
             <el-button icon="el-icon-document-copy" size="small" @click="getExport" plain>导出资源</el-button>
             <el-button icon="el-icon-plus" size="small" @click="ImportShow" plain>表格导入</el-button>
             <el-button icon="el-icon-plus" size="small" @click="ImportBatch" plain>批量导入</el-button>
+            <el-button icon="el-icon-edit" size="small" @click="showBatchCategory" plain>批量修改分类</el-button>
         </el-form-item>
         <div style="float:right">
             <el-form-item style="width:120px;">
                 <el-select size="small" v-model="search.source_category_id" placeholder="筛选分类">
+                    <el-option label="全部分类" value=""></el-option>
                     <el-option v-for="item in category" :key="item.source_category_id" :label="item.name"
                         :value="item.source_category_id">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item style="width:120px;">
+                <el-select size="small" v-model="search.is_type" placeholder="网盘类型">
+                    <el-option label="全部网盘" value=""></el-option>
+                    <el-option label="夸克网盘" :value="0"></el-option>
+                    <el-option label="阿里网盘" :value="1"></el-option>
+                    <el-option label="百度网盘" :value="2"></el-option>
+                    <el-option label="UC网盘" :value="3"></el-option>
+                    <el-option label="迅雷网盘" :value="4"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item style="width:120px;">
+                <el-select size="small" v-model="search.account_name" placeholder="添加人" filterable clearable>
+                    <el-option label="全部账号" value=""></el-option>
+                    <el-option v-for="item in accountList" :key="item" :label="item" :value="item">
                     </el-option>
                 </el-select>
             </el-form-item>
@@ -37,14 +59,15 @@
         </el-table-column>
         <el-table-column prop="source_id" label="ID" width="80">
         </el-table-column>
-        <el-table-column prop="title" label="资源名称">
+        <el-table-column prop="title" label="资源名称" width="320">
         </el-table-column>
-        <el-table-column prop="source_category_id_name" label="资源分类">
+        <el-table-column prop="source_category_id_name" label="资源分类" width="100">
         </el-table-column>
         <el-table-column prop="url" label="资源地址" align="center">
         </el-table-column>
-        <el-table-column prop="create_time" label="入库时间" align="center" width="200">
+        <el-table-column prop="account_name" label="添加人" align="center" width="150">
         </el-table-column>
+
         <el-table-column prop="update_time" label="更新时间" align="center" width="200">
         </el-table-column>
         <el-table-column label="操作" width="180" align="center">
@@ -88,6 +111,9 @@
             <el-form-item prop="url" label="资源地址" :label-width="formLabelWidth">
                 <el-input size="medium" autocomplete="off" placeholder="请输入资源地址" v-model="formAdd.url"></el-input>
             </el-form-item>
+            <el-form-item prop="account_name" label="账号名称" :label-width="formLabelWidth">
+                <el-input size="medium" autocomplete="off" placeholder="请输入账号名称" v-model="formAdd.account_name"></el-input>
+            </el-form-item>
             <el-form-item label="关键词搜索" :label-width="formLabelWidth">
                 <el-input type="textarea" :rows="5" size="medium" autocomplete="off" placeholder="一行一个名称"
                     v-model="formAdd.description"></el-input>
@@ -117,6 +143,9 @@
             </el-form-item>
             <el-form-item prop="url" label="资源地址" :label-width="formLabelWidth">
                 <el-input size="medium" autocomplete="off" placeholder="请输入资源地址" v-model="formEdit.url"></el-input>
+            </el-form-item>
+            <el-form-item prop="account_name" label="账号名称" :label-width="formLabelWidth">
+                <el-input size="medium" autocomplete="off" placeholder="请输入账号名称" v-model="formEdit.account_name"></el-input>
             </el-form-item>
             <el-form-item label="关键词搜索" :label-width="formLabelWidth">
                 <el-input type="textarea" :rows="5" size="medium" autocomplete="off" placeholder="一行一个名称"
@@ -202,6 +231,23 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
         </div>
     </el-dialog>
 
+    <!-- 批量修改分类 -->
+    <el-dialog title="批量修改分类" :visible.sync="dialogBatchCategory" :modal-append-to-body='false' append-to-body
+        :close-on-click-modal='false' width="400px">
+        <el-form :model="batchCategoryForm">
+            <el-form-item prop="source_category_id" label="资源分类" label-width="90px">
+                <el-select size="medium" v-model="batchCategoryForm.source_category_id" placeholder="请选择分类" required>
+                    <el-option v-for="item in category" :key="item.source_category_id" :label="item.name"
+                        :value="item.source_category_id">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="batchUpdateCategory()">确认修改</el-button>
+        </div>
+    </el-dialog>
+
     {include file="common/footer"/}
     <script>
         var app = new Vue({
@@ -211,7 +257,9 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
                     search: {
                         keyword: "",
                         filter: "title",
-                        source_category_id: ''
+                        source_category_id: '',
+                        is_type: '',
+                        account_name: ''
                     },
                     formLabelWidth: '120px',
                     dialogFormAdd: false,
@@ -238,13 +286,17 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
                     },
 
                     category: [],
+                    accountList: [],
 
                     dialogBatch: false,
                     Batchform: {},
+                    dialogBatchCategory: false,
+                    batchCategoryForm: {},
                 }
             },
             created() {
                 this.getcategory();
+                this.getAdminList();
             },
             methods: {
                 getList_search(val) {
@@ -252,7 +304,9 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
                         this.search = {
                             keyword: "",
                             filter: "title",
-                            source_category_id: ''
+                            source_category_id: '',
+                            is_type: '',
+                            account_name: ''
                         }
                     }
                     this.form.page = 1;
@@ -290,28 +344,92 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
                     var that = this;
                     that.$refs['formAdd'].validate((valid) => {
                         if (valid) {
-                            axios.post('/admin/source/add', Object.assign({}, PostBase, that.formAdd))
-                                .then(function (response) {
-                                    that.getList();
-                                    if (response.data.code == CODE_SUCCESS) {
-                                        that.$message({
-                                            message: response.data.message,
-                                            type: 'success'
+                            if (!that.formAdd.title) {
+                                that.$message.error('请输入资源名称');
+                                return;
+                            }
+                            
+                            that.$message({ type: 'info', message: '正在生成关键词，请稍候...' });
+                            
+                            var callbackName = 'baiduSugCallback_' + Date.now();
+                            var url = 'https://www.baidu.com/sugrec?pre=1&p=3&ie=utf-8&json=1&prod=pc&from=pc_web&wd=' + encodeURIComponent(that.formAdd.title) + '&cb=' + callbackName;
+                            
+                            window[callbackName] = function(data) {
+                                if (data && data.g && data.g.length > 0) {
+                                    var keywords = data.g.map(function(item) {
+                                        return item.q;
+                                    });
+                                    that.formAdd.description = keywords.join('\n');
+                                    
+                                    setTimeout(function() {
+                                        axios.post('/admin/source/add', Object.assign({}, PostBase, that.formAdd))
+                                            .then(function (response) {
+                                                that.getList();
+                                                if (response.data.code == CODE_SUCCESS) {
+                                                    that.$message({
+                                                        message: response.data.message,
+                                                        type: 'success'
+                                                    });
+                                                    that.dialogFormAdd = false;
+                                                } else {
+                                                    that.$message.error(response.data.message);
+                                                }
+                                            })
+                                            .catch(function (error) {
+                                                that.$message.error('服务器内部错误');
+                                            });
+                                    }, 100);
+                                } else {
+                                    that.$message.warning('未找到相关关键词，直接提交');
+                                    axios.post('/admin/source/add', Object.assign({}, PostBase, that.formAdd))
+                                        .then(function (response) {
+                                            that.getList();
+                                            if (response.data.code == CODE_SUCCESS) {
+                                                that.$message({
+                                                    message: response.data.message,
+                                                    type: 'success'
+                                                });
+                                                that.dialogFormAdd = false;
+                                            } else {
+                                                that.$message.error(response.data.message);
+                                            }
+                                        })
+                                        .catch(function (error) {
+                                            that.$message.error('服务器内部错误');
                                         });
-                                        that.dialogFormAdd = false;
-                                    } else {
-                                        that.$message.error(response.data.message);
-                                    }
-                                })
-                                .catch(function (error) {
-                                    that.$message.error('服务器内部错误');
-                                });
+                                }
+                                delete window[callbackName];
+                            };
+                            
+                            var script = document.createElement('script');
+                            script.src = url;
+                            script.onerror = function() {
+                                that.$message.error('网络错误，直接提交');
+                                delete window[callbackName];
+                                axios.post('/admin/source/add', Object.assign({}, PostBase, that.formAdd))
+                                    .then(function (response) {
+                                        that.getList();
+                                        if (response.data.code == CODE_SUCCESS) {
+                                            that.$message({
+                                                message: response.data.message,
+                                                type: 'success'
+                                            });
+                                            that.dialogFormAdd = false;
+                                        } else {
+                                            that.$message.error(response.data.message);
+                                        }
+                                    })
+                                    .catch(function (error) {
+                                        that.$message.error('服务器内部错误');
+                                    });
+                            };
+                            document.head.appendChild(script);
                         }
                     });
                 },
                 clickAdd() {
                     var that = this;
-                    that.formAdd = { status: 1, share_image: '' };
+                    that.formAdd = { status: 1, share_image: '', account_name: adminName };
                     that.dialogFormAdd = true;
                 },
                 clickDelete(row) {
@@ -390,7 +508,7 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
                             that.loading = false;
                             if (response.data.code == CODE_SUCCESS) {
                                 that.dataList = response.data.data;
-                                that.setcategory()
+                                that.setcategory();
                             } else {
                                 that.$message.error(response.data.message);
                             }
@@ -408,6 +526,27 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
                             }
                         }
                     }
+                },
+                getAdminList() {
+                    var that = this;
+                    axios.post('/admin/admin/getList', Object.assign({}, PostBase, {
+                        page: 1,
+                        per_page: 1000
+                    }))
+                    .then(function (response) {
+                        if (response.data.code == CODE_SUCCESS) {
+                            var admins = new Set();
+                            for (let item of response.data.data.data) {
+                                if (item.admin_account) {
+                                    admins.add(item.admin_account);
+                                }
+                            }
+                            that.accountList = Array.from(admins).sort();
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
                 },
 
                 //导入数据
@@ -512,6 +651,47 @@ https://pan.xunlei.com/s/xxxxxx?pwd=xxxx" v-model="Batchform.urls" rows="20" sho
                     for (var index in list) {
                         that.selectList.push(list[index].source_id);
                     }
+                },
+                
+                // 显示批量修改分类对话框
+                showBatchCategory() {
+                    var that = this;
+                    if (that.selectList.length == 0) {
+                        that.$message.error('未选择任何资源！');
+                        return;
+                    }
+                    that.batchCategoryForm = {};
+                    that.dialogBatchCategory = true;
+                },
+                
+                // 批量修改分类
+                batchUpdateCategory() {
+                    var that = this;
+                    if (!that.batchCategoryForm.source_category_id) {
+                        that.$message.error('请选择分类！');
+                        return;
+                    }
+                    
+                    axios.post('/admin/source/batchUpdateCategory', Object.assign({}, PostBase, {
+                        source_ids: that.selectList.join(","),
+                        source_category_id: that.batchCategoryForm.source_category_id
+                    }))
+                    .then(function (response) {
+                        that.getList();
+                        if (response.data.code == CODE_SUCCESS) {
+                            that.$message({
+                                message: response.data.message,
+                                type: 'success'
+                            });
+                            that.dialogBatchCategory = false;
+                        } else {
+                            that.$message.error(response.data.message);
+                        }
+                    })
+                    .catch(function (error) {
+                        that.$message.error('服务器内部错误');
+                        console.log(error);
+                    });
                 },
             }
         })

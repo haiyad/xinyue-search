@@ -171,13 +171,12 @@ class Index extends QfShop
             $linesTotal[$item['pantype']] = $item['total'];
         }
 
-        // 定义名称映射
-        $names = [
-            0 => '夸克网盘',
-            2 => '百度网盘',
-            3 => 'UC网盘',
-            4 => '迅雷云盘'
-        ];
+        // 从配置文件读取网盘类型名称
+        $panTypes = config('pan_types');
+        $names = [];
+        foreach ($panTypes as $panConfig) {
+            $names[$panConfig['id']] = $panConfig['name'] ?? '未知网盘';
+        }
 
         // 根据查询结果生成显示列表（顺序和数据库一致）
         $displayList = [];
@@ -191,13 +190,13 @@ class Index extends QfShop
             }
         }
 
-        // 记录第一个 key（如果需要前端默认选中）
-        $firstKey = !empty($displayList) ? $displayList[0]['type'] : null;
-
         // 如果没有任何数据
         if (empty($displayList)) {
             $config['is_quan'] = 0;
         }
+
+        // 设置默认网盘类型（第一个有数据的网盘类型）
+        $firstKey = !empty($displayList) ? $displayList[0]['type'] : 0;
 
         // 传给模板
         View::assign('blocked', $blocked);
@@ -212,6 +211,7 @@ class Index extends QfShop
         View::assign('page_size', $data['page_size']);
         View::assign('page_no', $data['page_no']);
         View::assign('category_id', $data['category_id']);
+        View::assign('panTypeMap', $names);
         View::assign('seo_title', $data['title'] . ' - ' . $config['app_name']);
         View::assign('seo_keywords', $data['title'] . ',' . $config['app_keywords']);
         View::assign('seo_description', $data['title'] . ' - ' . $config['app_description']);
@@ -283,6 +283,12 @@ class Index extends QfShop
 
 
         $config = config("qfshop");
+        $panTypes = config('pan_types');
+        
+        $panTypeMap = [];
+        foreach ($panTypes as $type) {
+            $panTypeMap[$type['id']] = $type['name'];
+        }
 
         View::assign('sameList', $sameList);
         View::assign('hotList', $hotList);
@@ -290,6 +296,7 @@ class Index extends QfShop
         View::assign('detail', $detail);
         View::assign('config', $config);
         View::assign('category_id', 0);
+        View::assign('panTypeMap', $panTypeMap);
 
         if ($detail['category'] && $detail['category']['name']) {
             View::assign('seo_title', $detail['title'] . '_' . $detail['category']['name'] . ' - ' . $config['app_name']);

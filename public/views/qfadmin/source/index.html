@@ -29,11 +29,9 @@
             <el-form-item style="width:120px;">
                 <el-select size="small" v-model="search.is_type" placeholder="网盘类型">
                     <el-option label="全部网盘" value=""></el-option>
-                    <el-option label="夸克网盘" :value="0"></el-option>
-                    <el-option label="阿里网盘" :value="1"></el-option>
-                    <el-option label="百度网盘" :value="2"></el-option>
-                    <el-option label="UC网盘" :value="3"></el-option>
-                    <el-option label="迅雷网盘" :value="4"></el-option>
+                    <?php foreach($panTypeMap ?? [] as $id => $name): ?>
+                    <el-option label="<?php echo $name; ?>" :value="<?php echo $id; ?>"></el-option>
+                    <?php endforeach; ?>
                 </el-select>
             </el-form-item>
             <el-form-item style="width:120px;">
@@ -199,9 +197,9 @@
                 </el-radio-group>
                 <p style="color: #999;" v-if='Batchform.type==1'>直接导入：链接校验有效后直接入库；Tips：该功能不会检测是否重复；</p>
                 <p style="color: #999;" v-else-if='Batchform.type==2'>将资源转存到自己网盘后分享入库；Tips：该功能不会检测是否重复；</p>
-                <span style="color: #999;" v-if='Batchform.type==1'>支持<font color=orangered>夸克、阿里、UC、百度、迅雷</font>
+                <span style="color: #999;" v-if='Batchform.type==1'>支持<font color=orangered>夸克、阿里、UC、百度、迅雷、123、115、天翼、移动、磁力</font>
                     的网盘资源(一次最多可以上传500条资源)</span>
-                <span style="color: #999;" v-else-if='Batchform.type==2'>支持<font color=orangered>夸克、阿里、UC、百度、迅雷</font>
+                <span style="color: #999;" v-else-if='Batchform.type==2'>支持<font color=orangered>夸克、阿里、UC、百度、迅雷、123、115、天翼、移动</font>
                     的网盘资源(一次最多可以上传500条资源)</span>
             </el-form-item>
             <el-form-item prop="source_category_id" label="资源分类" label-width="70px" v-if="Batchform.type">

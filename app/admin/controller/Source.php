@@ -3,6 +3,7 @@
 namespace app\admin\controller;
 
 use think\App;
+use think\facade\View;
 use think\facade\Filesystem;
 use think\exception\ValidateException;
 use app\admin\QfShop;
@@ -16,6 +17,12 @@ class Source extends QfShop
     public function __construct(App $app)
     {
         parent::__construct($app);
+        $panTypes = config('pan_types');
+        $panTypeMap = [];
+        foreach ($panTypes as $type) {
+            $panTypeMap[$type['id']] = $type['name'];
+        }
+        View::assign('panTypeMap', $panTypeMap);
         //查询列表时允许的字段
         $this->selectList = "*";
         //查询详情时允许的字段

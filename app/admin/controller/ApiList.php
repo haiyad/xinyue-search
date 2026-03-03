@@ -47,13 +47,30 @@ class ApiList extends QfShop
      */
     public function getList()
     {
-        //校验Access与RBAC
         $error = $this->access();
         if ($error) {
             return $error;
         }
-        //查询数据
-        $dataList = $this->model->order('weight', 'desc')->select();
+
+        $keyword = input('keyword', '');
+        $type = input('type', '');
+        $pantype = input('pantype', '');
+
+        $query = $this->model;
+
+        if (!empty($keyword)) {
+            $query = $query->whereLike('name', '%' . $keyword . '%');
+        }
+
+        if (!empty($type)) {
+            $query = $query->where('type', $type);
+        }
+
+        if ($pantype !== '') {
+            $query = $query->where('pantype', $pantype);
+        }
+
+        $dataList = $query->order('weight', 'desc')->select();
         return jok('数据获取成功', $dataList);
     }
 
@@ -167,11 +184,27 @@ class ApiList extends QfShop
             return jerr("数据查询失败", 404);
         }
         
-        //单个操作
         $map = ["id" => $id];
         $this->model->where($map)->delete();
        
         return jok('删除成功');
+    }
+
+    public function batchDelete()
+    {
+        $error = $this->access();
+        if ($error) {
+            return $error;
+        }
+
+        $ids = input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return jerr('请选择要删除的线路', 400);
+        }
+
+        $count = $this->model->whereIn('id', $ids)->delete();
+
+        return jok('成功删除 ' . $count . ' 条线路');
     }
 
 
@@ -253,6 +286,18 @@ class ApiList extends QfShop
             $this->model->where("id", 'in', $list)->update($d);
         }
         return jok("启用成功");
+    }
+
+    public function getPanTypes()
+    {
+        $error = $this->access();
+        if ($error) {
+            return $error;
+        }
+        
+        $panTypes = config('pan_types');
+        
+        return jok('数据获取成功', $panTypes);
     }
 
 }

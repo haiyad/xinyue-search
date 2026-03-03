@@ -16,27 +16,25 @@ class Transfer
 
     public function getFiles($type = 0, $pdir_fid = 0)
     {
-        if ($type == 1) {
-            //阿里
-            $pan = new \netdisk\pan\AlipanPan();
-            return $pan->getFiles($pdir_fid);
-        } else if ($type == 2) {
-            //百度网盘
-            $pan = new \netdisk\pan\BaiduPan();
-            return $pan->getFiles($pdir_fid);
-        } else if ($type == 3) {
-            //UC
-            $pan = new \netdisk\pan\UcPan();
-            return $pan->getFiles($pdir_fid);
-        } else if ($type == 4) {
-            //迅雷
-            $pan = new \netdisk\pan\XunleiPan();
-            return $pan->getFiles($pdir_fid);
-        } else {
-            //夸克
-            $pan = new \netdisk\pan\QuarkPan();
+        $panTypes = config('pan_types');
+        
+        $className = 'QuarkPan';
+        foreach ($panTypes as $config) {
+            if ($config['id'] == $type) {
+                $className = $config['class_name'] ?? 'QuarkPan';
+                break;
+            }
+        }
+        
+        $fullClassName = "\\netdisk\\pan\\$className";
+        
+        if (class_exists($fullClassName)) {
+            $pan = new $fullClassName();
             return $pan->getFiles($pdir_fid);
         }
+        
+        $pan = new \netdisk\pan\QuarkPan();
+        return $pan->getFiles($pdir_fid);
     }
 
     public function transfer($urlData = [])
@@ -58,79 +56,67 @@ class Transfer
 
         $substring = strstr($url, 's/');
         if ($substring !== false) {
-            $pwd_id = substr($substring, 2); // 去除 's/' 部分
+            $pwd_id = substr($substring, 2);
         } else {
             return jerr2("资源地址格式有误");
         }
 
-        $patterns = [
-            'pan.quark.cn' => 0,
-            'www.alipan.com' => 1,
-            'www.aliyundrive.com' => 1,
-            'pan.baidu.com' => 2,
-            'drive.uc.cn' => 3,
-            'fast.uc.cn' => 3,
-            'pan.xunlei.com' => 4,
-        ];
-
-        $url_type = -1;  // 默认值为 -1
-        foreach ($patterns as $pattern => $type) {
-            if (strpos($url, $pattern) !== false) {
-                $url_type = $type;
-                break;  // 一旦匹配成功，退出循环
+        $url_type = -1;
+        $panTypes = config('pan_types');
+        
+        foreach ($panTypes as $panConfig) {
+            $domains = $panConfig['domain'] ?? [];
+            if (!is_array($domains)) {
+                $domains = [$domains];
+            }
+            
+            foreach ($domains as $domain) {
+                if (strpos($url, $domain) !== false) {
+                    $url_type = $panConfig['id'];
+                    break 2;
+                }
             }
         }
 
         $this->url = $url;
 
-        if ($url_type == 0) {
-            //夸克
-            $pan = new \netdisk\pan\QuarkPan($config);
-            return $pan->transfer(strtok($pwd_id, '#'));
-        } else if ($url_type == 1) {
-            //阿里
-            $pan = new \netdisk\pan\AlipanPan($config);
-            return $pan->transfer(strtok($pwd_id, '#'));
-        } else if ($url_type == 2) {
-            //百度网盘
-            $pan = new \netdisk\pan\BaiduPan($config);
-            return $pan->transfer(strtok($pwd_id, '#'));
-        } else if ($url_type == 3) {
-            //UC
-            $pan = new \netdisk\pan\UcPan($config);
-            return $pan->transfer(strtok($pwd_id, '#'));
-        } else if ($url_type == 4) {
-            //迅雷
-            $pan = new \netdisk\pan\XunleiPan($config);
-            return $pan->transfer(strtok($pwd_id, '#'));
-        } else {
-            return jerr2("资源地址格式有误");
+        $className = 'QuarkPan';
+        foreach ($panTypes as $config) {
+            if ($config['id'] == $url_type) {
+                $className = $config['class_name'] ?? 'QuarkPan';
+                break;
+            }
         }
+        $fullClassName = "\\netdisk\\pan\\$className";
+        
+        if (class_exists($fullClassName)) {
+            $pan = new $fullClassName($config);
+            return $pan->transfer(strtok($pwd_id, '#'));
+        }
+        
+        return jerr2("资源地址格式有误");
     }
 
 
     public function deletepdirFid($type = 0, $filelist)
     {
-        if ($type == 1) {
-            //阿里
-            $pan = new \netdisk\pan\AlipanPan();
-            return $pan->deletepdirFid($filelist);
-        } else if ($type == 2) {
-            //百度网盘
-            $pan = new \netdisk\pan\BaiduPan();
-            return $pan->deletepdirFid($filelist);
-        } else if ($type == 3) {
-            //UC
-            $pan = new \netdisk\pan\UcPan();
-            return $pan->deletepdirFid($filelist);
-        } else if ($type == 4) {
-            //迅雷
-            $pan = new \netdisk\pan\XunleiPan();
-            return $pan->deletepdirFid($filelist);
-        } else {
-            //夸克
-            $pan = new \netdisk\pan\QuarkPan();
+        $panTypes = config('pan_types');
+        
+        $className = 'QuarkPan';
+        foreach ($panTypes as $config) {
+            if ($config['id'] == $type) {
+                $className = $config['class_name'] ?? 'QuarkPan';
+                break;
+            }
+        }
+        $fullClassName = "\\netdisk\\pan\\$className";
+        
+        if (class_exists($fullClassName)) {
+            $pan = new $fullClassName();
             return $pan->deletepdirFid($filelist);
         }
+        
+        $pan = new \netdisk\pan\QuarkPan();
+        return $pan->deletepdirFid($filelist);
     }
 }

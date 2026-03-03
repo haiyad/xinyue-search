@@ -53,14 +53,8 @@
                         <div class="r">
                             <img src="__STATIC__/news/common/static/images/{$detail.is_type}.png" class="icon"
                                 alt="网盘图标" />
-                            {if condition="$detail.is_type==1"}
-                            <span>阿里云盘</span>
-                            {elseif condition="$detail.is_type==2"/}
-                            <span>百度网盘</span>
-                            {elseif condition="$detail.is_type==3"/}
-                            <span>UC网盘</span>
-                            {elseif condition="$detail.is_type==4"/}
-                            <span>迅雷网盘</span>
+                            {if condition="isset($panTypeMap[$detail.is_type])"}
+                            <span>{$panTypeMap[$detail.is_type]}</span>
                             {else /}
                             <span>夸克网盘</span>
                             {/if}

@@ -277,13 +277,12 @@ class Other extends QfShop
         $type = $line['pantype'];
         $maxCount = $line['count'];
 
-        // 根据类型选择搜索参数
-        $panType = [
-            0 => 'quark',   // 夸克
-            2 => 'baidu',    // 百度
-            3 => 'uc',    // UC
-            4 => 'xunlei',    // 迅雷
-        ];
+        // 从配置文件读取网盘类型
+        $panTypes = config('pan_types');
+        $panType = [];
+        foreach ($panTypes as $config) {
+            $panType[$config['id']] = $config['pan_type'] ?? '';
+        }
 
         if (!isset($panType[$type]) || $maxCount <= 0) {
             return [];
@@ -371,29 +370,18 @@ class Other extends QfShop
                         $stringValue = (string)$value;
                     }
 
-                    // 从字符串中提取夸克网盘链接
-                    if ($type === 0 && preg_match('/https:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9]+/', $stringValue, $urlMatch)) {
+                    $urlPattern = getPanUrlPattern($type);
+                    if (!empty($urlPattern) && preg_match($urlPattern, $stringValue, $urlMatch)) {
                         $row['url'] = trim($urlMatch[0]);
-                    }
-                    else if($type === 3 && preg_match('/https:\/\/drive\.uc\.cn\/s\/[a-zA-Z0-9]+/', $stringValue, $urlMatch)) {
-                        $row['url'] = trim($urlMatch[0]);
-                    } 
-                    // 从字符串中提取迅雷云盘链接
-                    else if ($type === 4 && preg_match('/https:\/\/pan\.xunlei\.com\/s\/[a-zA-Z0-9_-]+(\?pwd=[a-zA-Z0-9]+)?/', $stringValue, $urlMatch)) {
-                        $row['url'] = trim($urlMatch[0]);
-
-                        // 检查URL中是否已有pwd参数，如果没有但字符串中有pwd字段，则添加
-                        if (!strpos($row['url'], '?pwd=') && preg_match('/["\'](pwd|code)["\']\s*:\s*["\']([^"\']+)["\']/', $stringValue, $pwdMatches)) {
-                            $row['url'] .= '?pwd=' . $pwdMatches[2];
-                        }
-                    }
-                    // 从字符串中提取百度网盘链接
-                    else if ($type === 2 && preg_match('/https:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(\?pwd=[a-zA-Z0-9]+)?/', $stringValue, $urlMatch)) {
-                        $row['url'] = trim($urlMatch[0]);
-
-                        // 检查URL中是否已有pwd参数，如果没有但字符串中有pwd字段，则添加
-                        if (!strpos($row['url'], '?pwd=') && preg_match('/["\'](pwd|code)["\']\s*:\s*["\']([^"\']+)["\']/', $stringValue, $pwdMatches)) {
-                            $row['url'] .= '?pwd=' . $pwdMatches[2];
+                        
+                        if (in_array($type, [2, 4])) {
+                            if (!strpos($row['url'], '?pwd=') && preg_match('/["\'](pwd|code)["\']\s*:\s*["\']([^"\']+)["\']/', $stringValue, $pwdMatches)) {
+                                $row['url'] .= '?pwd=' . $pwdMatches[2];
+                            }
+                        } else if ($type == 5) {
+                            if (!strpos($row['url'], '?提取码:') && preg_match('/["\']?提取码["\']?\s*[:：]\s*["\']?([a-zA-Z0-9]+)["\']?/', $stringValue, $pwdMatches)) {
+                                $row['url'] .= '?提取码:' . $pwdMatches[1];
+                            }
                         }
                     } else {
                         $row['url'] = '';
@@ -419,9 +407,12 @@ class Other extends QfShop
         // 根据类型选择搜索参数
         $panType = [
             0 => 'quark',   // 夸克
+            1 => 'alipan',  // 阿里云盘
             2 => 'baidu',    // 百度
-            3 => 'uc',    // UC
-            4 => 'xunlei',    // 迅雷
+            3 => 'uc',       // UC
+            4 => 'xunlei',   // 迅雷
+            5 => 'pan123',   // 123网盘
+            6 => 'pan115',   // 115网盘
         ];
 
         if (!isset($panType[$type]) || $maxCount <= 0) {
@@ -453,13 +444,8 @@ class Other extends QfShop
 
             // 提取夸克链接（可支持百度扩展）
             $parsedItem['url'] = '';
-            if ($type === 0 && preg_match('/https:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9]+/', $htmlContent, $urlMatch)) {
-                $parsedItem['url'] = trim($urlMatch[0]);
-            }else if ($type === 3 && preg_match('/https:\/\/drive\.uc\.cn\/s\/[a-zA-Z0-9]+/', $htmlContent, $urlMatch)) {
-                $parsedItem['url'] = trim($urlMatch[0]);
-            } else if ($type === 4 && preg_match('/https:\/\/pan\.xunlei\.com\/s\/[a-zA-Z0-9_-]+(\?pwd=[a-zA-Z0-9]+)?/', $htmlContent, $urlMatch)) {
-                $parsedItem['url'] = trim($urlMatch[0]);
-            } else if ($type === 2 && preg_match('/https:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(\?pwd=[a-zA-Z0-9]+)?/', $htmlContent, $urlMatch)) {
+            $urlPattern = getPanUrlPattern($type);
+            if (!empty($urlPattern) && preg_match($urlPattern, $htmlContent, $urlMatch)) {
                 $parsedItem['url'] = trim($urlMatch[0]);
             }
 
@@ -504,9 +490,11 @@ class Other extends QfShop
         // 定义网盘链接匹配规则
         $panPatterns = [
             0 => '/https:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9]+/', // 夸克
-            2 => '/https:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(\?pwd=[a-zA-Z0-9]+)?/', // 百度（包含提取码）
+            1 => '/https:\/\/(www\.alipan\.com|www\.aliyundrive\.com)\/s\/[a-zA-Z0-9]+/', // 阿里云盘
+            2 => '/https:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+/', // 百度
             3 => '/https:\/\/drive\.uc\.cn\/s\/[a-zA-Z0-9]+/', // UC
-            4 => '/https:\/\/pan\.xunlei\.com\/s\/[a-zA-Z0-9_-]+(\?pwd=[a-zA-Z0-9]+)?/', // 迅雷
+            4 => '/https:\/\/pan\.xunlei\.com\/s\/[a-zA-Z0-9_-]+/', // 迅雷
+            5 => '/https:\/\/123\d{3}\.com\/s\/[a-zA-Z0-9-]+/', // 123网盘
         ];
 
         // 获取DOM并设置XPath查询
@@ -840,6 +828,11 @@ class Other extends QfShop
      */
     private function verificationUrl($url)
     {
+        // 磁力链接直接返回，不需要验证
+        if (preg_match('/^magnet:\?xt=urn:btih:/i', $url)) {
+            return ['url' => $url];
+        }
+
         $code = '';
         if (preg_match('/\?pwd=([^,\s&]+)/', $url, $pwdMatch)) {
             $code = trim($pwdMatch[1]);
@@ -960,6 +953,33 @@ class Other extends QfShop
      */
     public function processUrl($value, &$num_success, &$datas, $type = false)
     {
+        // 检查是否为磁力链接
+        if (preg_match('/^magnet:\?xt=urn:btih:/i', $value['url'])) {
+            // 磁力链接直接处理，不需要转存
+            $patterns = '/^\d+\./';
+            $title = preg_replace($patterns, '', $value['title']);
+            
+            // 添加资源到系统中
+            $data["title"] = $title;
+            $data["url"] = $value['url'];
+            $data["is_type"] = 9; // 磁力链接类型
+            $data["content"] = $value['url'];
+            $data["fid"] = '';
+            $data["is_time"] = 1;
+            $data["update_time"] = time();
+            $data["create_time"] = time();
+            $data["id"] = $this->model->insertGetId($data);
+            $datas[] = $data;
+            $num_success++;
+
+            if ($type) {
+                return jok2('转存成功', ['title' => $title, 'url' => $value['url'], 'fid' => '']);
+            } else {
+                return;
+            }
+        }
+
+        // 网盘链接处理
         $substring = strstr($value['url'], 's/');
         if ($substring === false) {
             if ($type) {

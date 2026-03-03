@@ -794,22 +794,50 @@ function highlightKeywords($title, $searchTitle)
  * @return int 网盘类型
  */
 function determineIsType($url) {
-    $domains = [
-        'alipan.com' => 1,
-        'aliyundrive.com' => 1,
-        'baidu.com' => 2,
-        'uc.cn' => 3,
-        'xunlei.com' => 4
-    ];
-
-    foreach ($domains as $domain => $type) {
-        if (strpos($url, $domain) !== false) {
-            return $type;
+    $panTypes = config('pan_types');
+    
+    // 特殊处理磁力链接：匹配 magnet:?xt=urn:btih: 格式
+    if (preg_match('/^magnet:\?xt=urn:btih:/i', $url)) {
+        return 9;
+    }
+    
+    foreach ($panTypes as $panConfig) {
+        $id = $panConfig['id'] ?? 0;
+        $domains = $panConfig['domain'] ?? [];
+        if (!is_array($domains)) {
+            $domains = [$domains];
+        }
+        
+        foreach ($domains as $domain) {
+            if (!empty($domain) && strpos($url, $domain) !== false) {
+                return $id;
+            }
         }
     }
+    
+    // 特殊处理123网盘：匹配123*.com格式（*代表任意3位数字）
+    if (preg_match('/https?:\/\/123\d{3}\.com\//', $url)) {
+        return 5;
+    }
 
-    // 默认值是夸克网盘，返回 0
+    // 特殊处理115网盘：匹配115cdn.com格式
+    if (strpos($url, '115cdn.com') !== false) {
+        return 6;
+    }
+
     return 0;
+}
+
+function getPanUrlPattern($type) {
+    $panTypes = config('pan_types');
+    
+    foreach ($panTypes as $config) {
+        if ($config['id'] == $type) {
+            return $config['url_pattern'] ?? '';
+        }
+    }
+    
+    return '';
 }
 
 /**
@@ -856,6 +884,8 @@ function parsePanLinks($input)
         // 提取提取码（?pwd= 或 , 分割）
         if (preg_match('/\?pwd=([^,\s&]+)/', $item, $pwdMatch)) {
             $code = trim($pwdMatch[1]);
+        } elseif (preg_match('/\?password=([^,\s&]+)/', $item, $passwordMatch)) {
+            $code = trim($passwordMatch[1]);
         } elseif (preg_match('/,\s*([a-zA-Z0-9]{4})\s*$/', $item, $commaMatch)) {
             $code = trim($commaMatch[1]);
             // 添加提取码到URL
@@ -916,15 +946,11 @@ function source2($isStoken=false,$title,$type=0,$num=5)
  */
 function sourceData1($isStoken=false,$title, $type = 0, $maxCount = 100, $apiType = 0)
 {
-    $urlDefault = "https://m.kkkba.com"; //http://s.kkkob.com
+    $urlDefault = "https://m.kkkba.com"; 
     $url2 = [];
     
-    // 定义匹配不同网盘的正则表达式
-    $pattern = [
-        0 => '/https:\/\/pan\.quark\.cn\/[^\s]*/', // 只匹配夸克
-        2 => '/https:\/\/pan\.baidu\.com\/[^\s]*/' // 只匹配百度
-    ];
-    if (!isset($pattern[$type])) {
+    $urlPattern = getPanUrlPattern($type);
+    if (empty($urlPattern)) {
         return [];
     }
 
@@ -971,7 +997,7 @@ function sourceData1($isStoken=false,$title, $type = 0, $maxCount = 100, $apiTyp
         $res = json_decode($res, true);
         if (!empty($res['list'] ?? [])) {
             foreach ($res['list'] as $value) {
-                if (preg_match($pattern[$type], $value['answer'], $matches)) {
+                if (preg_match($urlPattern, $value['answer'], $matches)) {
                     $link = $matches[0];
                     if (preg_match('/提取码[:：]?\s*([a-zA-Z0-9]{4})/', $value['answer'], $codeMatch)) {
                         $link .= '?pwd=' . $codeMatch[1];
@@ -1008,21 +1034,25 @@ function sourceData1($isStoken=false,$title, $type = 0, $maxCount = 100, $apiTyp
  * @return array
  */
 function sourceData2($isStoken=false,$title, $type = 0, $maxCount = 100)
-{
-    // 根据类型选择搜索参数
-    $panType = [
-        0 => 'quark',   // 夸克
-        2 => 'baidu'    // 百度
-    ];
-
-    if (!isset($panType[$type])) {
+ {
+    $panTypes = config('pan_types');
+    
+    $panType = '';
+    foreach ($panTypes as $config) {
+        if ($config['id'] == $type) {
+            $panType = $config['pan_type'] ?? '';
+            break;
+        }
+    }
+    
+    if (empty($panType)) {
         return [];
     }
     
     $results = [];
 
     // 仅获取指定网盘的资源
-    $url = 'https://www.pansearch.me/search?keyword='.urlencode($title).'&pan='.$panType[$type];
+    $url = 'https://www.pansearch.me/search?keyword='.urlencode($title).'&pan='.$panType;
     $dom = getDom($url);
     $finder = new DomXPath($dom);
     
@@ -1044,14 +1074,12 @@ function sourceData2($isStoken=false,$title, $type = 0, $maxCount = 100)
             $parsedItem['title'] = $title;
         }
 
-        // 定义不同类型的链接匹配规则（百度网盘包含提取码）
-        $pattern = [
-            0 => '/https:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9]+/', // 夸克
-            2 => '/https:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(\?pwd=[a-zA-Z0-9]+)?/' // 百度（包含提取码）
-        ];
+        $urlPattern = getPanUrlPattern($type);
+        if (empty($urlPattern)) {
+            continue;
+        }
 
-        // 提取下载链接
-        if (preg_match($pattern[$type], $content, $urlMatch)) {
+        if (preg_match($urlPattern, $content, $urlMatch)) {
             $parsedItem['url'] = trim($urlMatch[0]);
         }
 
@@ -1086,6 +1114,8 @@ function sourceData2($isStoken=false,$title, $type = 0, $maxCount = 100)
 function verificationUrl($url) {
     $code = '';
     if (preg_match('/\?pwd=([^,\s&]+)/', $url, $pwdMatch)) {
+        $code = trim($pwdMatch[1]);
+    } elseif (preg_match('/\?password=([^,\s&]+)/', $url, $pwdMatch)) {
         $code = trim($pwdMatch[1]);
     }
     $urlData = [

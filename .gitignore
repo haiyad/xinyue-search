@@ -1,6 +1,8 @@
 /.svn
 /.vscode
 runtime
+vendor
+xinyue-search.zip
 nginx.htaccess
 .env
 /public/install/install.lock

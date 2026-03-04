@@ -1,4 +1,4 @@
-<?php /*a:5:{s:65:"D:\project\github\xinyue-search\public/views\index\news\list.html";i:1772524608;s:74:"D:\project\github\xinyue-search\public/views\index\news\common\header.html";i:1772387193;s:72:"D:\project\github\xinyue-search\public/views\index\news\common\head.html";i:1772520844;s:72:"D:\project\github\xinyue-search\public/views\index\news\common\foot.html";i:1772387193;s:74:"D:\project\github\xinyue-search\public/views\index\news\common\footer.html";i:1772522393;}*/ ?>
+<?php /*a:5:{s:65:"D:\project\github\xinyue-search\public/views\index\news\list.html";i:1772591618;s:74:"D:\project\github\xinyue-search\public/views\index\news\common\header.html";i:1772387193;s:72:"D:\project\github\xinyue-search\public/views\index\news\common\head.html";i:1772520844;s:72:"D:\project\github\xinyue-search\public/views\index\news\common\foot.html";i:1772387193;s:74:"D:\project\github\xinyue-search\public/views\index\news\common\footer.html";i:1772522393;}*/ ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

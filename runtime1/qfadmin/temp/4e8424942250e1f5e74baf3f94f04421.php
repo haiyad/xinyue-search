@@ -1,4 +1,4 @@
-<?php /*a:5:{s:72:"D:\project\github\xinyue-search\public/views\qfadmin\source\deposit.html";i:1772519314;s:71:"D:\project\github\xinyue-search\public/views\qfadmin\common\header.html";i:1772439894;s:69:"D:\project\github\xinyue-search\public/views\qfadmin\common\menu.html";i:1772387193;s:71:"D:\project\github\xinyue-search\public/views\qfadmin\common\footer.html";i:1772387193;s:72:"D:\project\github\xinyue-search\public/views\qfadmin\component\view.html";i:1772387193;}*/ ?>
+<?php /*a:5:{s:72:"D:\project\github\xinyue-search\public/views\qfadmin\source\deposit.html";i:1772523196;s:71:"D:\project\github\xinyue-search\public/views\qfadmin\common\header.html";i:1772439894;s:69:"D:\project\github\xinyue-search\public/views\qfadmin\common\menu.html";i:1772387193;s:71:"D:\project\github\xinyue-search\public/views\qfadmin\common\footer.html";i:1772387193;s:72:"D:\project\github\xinyue-search\public/views\qfadmin\component\view.html";i:1772387193;}*/ ?>
 <!DOCTYPE html>
 <html>
 
@@ -340,6 +340,44 @@
                     </div>
                 </el-card>
             </el-tab-pane>
+            <el-tab-pane label="移动网盘" name="8">
+                <el-card class="box-card">
+                    <div slot="header" class="clearfix">
+                        <span>移动网盘</span>
+                    </div>
+                    <div style="font-size:14px;color:#666;">
+                        <el-form :model="form">
+                            <el-form-item label="设置cookie">
+                                <el-input style="width: 100%;" v-model="form.yidong_cookie" placeholder="请输入">
+                                    <el-button slot="prepend" @click="getFile(8)">账号检测</el-button>
+                                </el-input>
+                                <span class="f_tips">cookie修改后，请保存后再选择转存目录和检测</span>
+                            </el-form-item>
+                            <el-form-item label="默认转存目录">
+                                <el-input style="width: 100%" v-model="form.yidong_file" placeholder="请输入或选择">
+                                    <div slot="prepend" style="position: relative;">
+                                        <p>请选择</p>
+                                        <el-cascader style="opacity: 0; height: 38px; position: absolute;inset: 0;"
+                                            v-model="form.yidong_file" :props="yidong_props"></el-cascader>
+                                    </div>
+                                </el-input>
+                            </el-form-item>
+                            <el-form-item label="临时资源目录">
+                                <el-input style="width: 100%" v-model="form.yidong_file_time" placeholder="请输入或选择">
+                                    <div slot="prepend" style="position: relative;">
+                                        <p>请选择</p>
+                                        <el-cascader style="opacity: 0; height: 38px; position: absolute;inset: 0;"
+                                            v-model="form.yidong_file_time" :props="yidong_props"></el-cascader>
+                                    </div>
+                                </el-input>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="primary" @click="onSubmit">保存</el-button>
+                            </el-form-item>
+                        </el-form>
+                    </div>
+                </el-card>
+            </el-tab-pane>
         </el-tabs>
     </el-card>
     </el-main>
@@ -519,7 +557,7 @@
             data() {
                 return {
                     activeName: '0',
-                    configKeys: ['quark_cookie', 'quark_file', 'quark_file_time', 'baidu_cookie', 'baidu_file', 'baidu_file_time', 'Authorization', 'ali_file', 'ali_file_time', 'uc_cookie', 'uc_file', 'uc_file_time', 'xunlei_cookie', 'xunlei_file', 'xunlei_file_time', 'tianyi_cookie', 'tianyi_file', 'tianyi_file_time'],
+                    configKeys: ['quark_cookie', 'quark_file', 'quark_file_time', 'baidu_cookie', 'baidu_file', 'baidu_file_time', 'Authorization', 'ali_file', 'ali_file_time', 'uc_cookie', 'uc_file', 'uc_file_time', 'xunlei_cookie', 'xunlei_file', 'xunlei_file_time', 'tianyi_cookie', 'tianyi_file', 'tianyi_file_time', 'yidong_cookie', 'yidong_file', 'yidong_file_time'],
                     form: {
                         quark_file: ''
                     },
@@ -696,6 +734,37 @@
                                         const nodes = (res.data.data || [])
                                             .map(item => ({
                                                 value: item.id,
+                                                label: item.fileName,
+                                                disabled: !item.isFolder,
+                                            }));
+                                        resolve(nodes);
+                                    } else {
+                                        resolve([]);
+                                    }
+                                })
+                                .catch(function (error) {
+                                    console.error(error);
+                                    resolve([]);
+                                });
+                        }
+                    },
+                    yidong_props: {
+                        lazy: true,
+                        emitPath: false,
+                        checkStrictly: true,
+                        lazyLoad(node, resolve) {
+                            const { level, value } = node;
+                            let that = this;
+                            axios.post('/admin/source/getFiles', Object.assign({
+                                type: 8,
+                                pdir_fid: value || 0
+                            }, PostBase))
+                                .then(function (res) {
+                                    if (res.data.code == 200) {
+                                        // 只显示文件夹
+                                        const nodes = (res.data.data || [])
+                                            .map(item => ({
+                                                value: item.fileId,
                                                 label: item.fileName,
                                                 disabled: !item.isFolder,
                                             }));

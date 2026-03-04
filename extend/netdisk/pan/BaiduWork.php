@@ -4,22 +4,22 @@ namespace netdisk\pan;
 class BaiduWork
 {
     protected $errorCodes = [
-        -1 => '链接错误，链接失效或缺少提取码或访问频繁风控',
-        -4 => '无效登录。请退出账号在其他地方的登录',
-        -6 => '请用浏览器无痕模式获取 Cookie 后再试',
-        -7 => '转存失败，转存文件夹名有非法字符，不能包含 < > | * ? \\ :，请改正目录名后重试',
-        -8 => '转存失败，目录中已有同名文件或文件夹存在',
-        -9 => '链接不存在或提取码错误',
-        -10 => '转存失败，容量不足',
-        -12 => '链接错误，提取码错误',
-        -62 => '链接访问次数过多，请手动转存或稍后再试',
+        -1 => '链接错误：链接失效、缺少提取码、页面结构变化或访问频繁风控。请检查链接是否正确，或尝试手动在浏览器中打开链接。',
+        -4 => '无效登录：请退出账号在其他地方的登录，然后在浏览器无痕模式重新获取 Cookie。',
+        -6 => 'Cookie 无效：请用浏览器无痕模式获取最新的 Cookie 后再试。',
+        -7 => '转存失败：转存文件夹名有非法字符，不能包含 < > | * ? \\ :，请改正目录名后重试。',
+        -8 => '转存失败：目录中已有同名文件或文件夹存在。',
+        -9 => '链接错误：链接不存在或提取码错误，请检查链接和提取码是否正确。',
+        -10 => '转存失败：百度网盘容量不足，请清理空间或升级会员。',
+        -12 => '链接错误：提取码错误，请确认提取码是否正确。',
+        -62 => '访问频繁：链接访问次数过多，请稍后再试或手动转存。',
         0 => '转存成功',
-        2 => '转存失败，目标目录不存在',
-        4 => '转存失败，目录中存在同名文件',
-        12 => '转存失败，转存文件数超过限制',
-        20 => '转存失败，容量不足',
-        105 => '链接错误，所访问的页面不存在',
-        115 => '该文件禁止分享'
+        2 => '转存失败：目标目录不存在，请检查转存目录设置。',
+        4 => '转存失败：目录中存在同名文件。',
+        12 => '转存失败：转存文件数超过限制。',
+        20 => '转存失败：百度网盘容量不足，请清理空间或升级会员。',
+        105 => '链接错误：所访问的页面不存在，链接可能已失效。',
+        115 => '禁止分享：该文件禁止分享或已被删除。'
     ];
 
     public function getErrorMessage($code)
@@ -159,17 +159,25 @@ class BaiduWork
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_ENCODING, 'gzip,deflate');
         // 允许跳转
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
 
         $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($response === false) {
-            throw new \Exception(curl_error($ch));
+            return -1;
+        }
+
+        // 检查 HTTP 状态码
+        if ($httpCode != 200) {
+            return -1;
         }
 
         // 直接返回原始响应内容，不做 json 解析
@@ -237,13 +245,14 @@ class BaiduWork
                 if ($method === 'GET' && !empty($params)) {
                     $url .= '?' . http_build_query($params);
                 }
-                
+
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_ENCODING, 'gzip,deflate');
 
                 if ($method === 'POST') {
@@ -258,13 +267,27 @@ class BaiduWork
                 }
 
                 $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError = curl_error($ch);
                 curl_close($ch);
 
                 if ($response === false) {
-                    throw new \Exception(curl_error($ch));
+                    throw new \Exception($curlError ?: 'cURL request failed');
                 }
 
-                return json_decode($response, true);
+                // 检查 HTTP 状态码
+                if ($httpCode != 200) {
+                    throw new \Exception("HTTP {$httpCode}: {$response}");
+                }
+
+                // 尝试解析 JSON
+                $jsonResult = json_decode($response, true);
+                if ($jsonResult === null && json_last_error() !== JSON_ERROR_NONE) {
+                    // JSON 解析失败，可能返回了 HTML 或其他格式
+                    throw new \Exception('Invalid JSON response');
+                }
+
+                return $jsonResult;
             } catch (\Exception $e) {
                 $retry--;
                 if ($retry <= 0) {
@@ -303,13 +326,17 @@ class BaiduWork
 
     protected function parseResponse($response)
     {
-        // 预定义正则表达式
+        // 调试：记录响应长度和前500个字符
+        $responseLength = strlen($response);
+        $responsePreview = substr($response, 0, 500);
+
+        // 预定义正则表达式 - 更新为更匹配百度网盘最新页面的模式
         $patterns = [
-            'shareid' => '/"shareid":(\d+?),"/',
-            'user_id' => '/"share_uk":"(\d+?)","/',
-            'fs_id' => '/"fs_id":(\d+?),"/',
-            'server_filename' => '/"server_filename":"(.+?)","/',
-            'isdir' => '/"isdir":(\d+?),"/'
+            'shareid' => '/"shareid"\s*:\s*"?(\d+)"?/',
+            'user_id' => '/"share_uk"\s*:\s*"(\d+)"/',
+            'fs_id' => '/"fs_id"\s*:\s*(\d+)/',
+            'server_filename' => '/"server_filename"\s*:\s*"([^"]+)"/',
+            'isdir' => '/"isdir"\s*:\s*(\d+)/'
         ];
 
         // 提取所有需要的参数
@@ -320,10 +347,72 @@ class BaiduWork
         }
 
         // 验证是否获取到所有必要参数
-        if (empty($results['shareid']) || empty($results['user_id']) || 
-            empty($results['fs_id']) || empty($results['server_filename']) || 
+        if (empty($results['shareid']) || empty($results['user_id']) ||
+            empty($results['fs_id']) || empty($results['server_filename']) ||
             empty($results['isdir'])) {
-            return -1;
+
+            // 尝试更宽松的正则表达式（处理可能的空格和格式变化）
+            $altPatterns = [
+                'shareid' => '/shareid["\s:=]+(\d+)/i',
+                'user_id' => '/share_uk["\s:=]+["\']?(\d+)["\']?/i',
+                'fs_id' => '/fs_id["\s:=]+(\d+)/i',
+                'server_filename' => '/server_filename["\s:=]+["\']([^"\']+)["\']/i',
+                'isdir' => '/isdir["\s:=]+(\d+)/i'
+            ];
+
+            foreach ($altPatterns as $key => $pattern) {
+                preg_match_all($pattern, $response, $matches);
+                if (empty($results[$key])) {
+                    $results[$key] = $matches[1] ?? [];
+                }
+            }
+
+            // 如果仍然无法获取，检查响应中是否包含错误信息
+            if (empty($results['shareid']) || empty($results['user_id']) ||
+                empty($results['fs_id']) || empty($results['server_filename']) ||
+                empty($results['isdir'])) {
+
+                // 检查是否包含验证码或风控信息
+                if (strpos($response, '验证码') !== false || strpos($response, 'captcha') !== false) {
+                    return -1; // 返回 -1 会被映射为"链接错误，链接失效或缺少提取码或访问频繁风控"
+                }
+
+                // 检查是否包含"链接不存在"或"分享已失效"
+                if (strpos($response, '链接不存在') !== false || strpos($response, '分享已失效') !== false) {
+                    return -1;
+                }
+
+                // 检查响应是否为空或过短
+                if (empty($response) || strlen($response) < 100) {
+                    return -1;
+                }
+
+                // 如果响应包含数据但格式不匹配，尝试从 SCRIPT 标签中提取
+                if (preg_match_all('/<script[^>]*>(.*?)<\/script>/is', $response, $scriptMatches)) {
+                    foreach ($scriptMatches[1] as $scriptContent) {
+                        foreach ($patterns as $key => $pattern) {
+                            if (empty($results[$key])) {
+                                preg_match_all($pattern, $scriptContent, $matches);
+                                $results[$key] = $matches[1] ?? [];
+                            }
+                        }
+                    }
+                }
+
+                // 最后一次验证
+                if (empty($results['shareid']) || empty($results['user_id']) ||
+                    empty($results['fs_id']) || empty($results['server_filename']) ||
+                    empty($results['isdir'])) {
+
+                    // 返回调试信息而不是错误码
+                    return [
+                        'error' => 'parse_failed',
+                        'response_length' => $responseLength,
+                        'response_preview' => $responsePreview,
+                        'results' => $results
+                    ];
+                }
+            }
         }
 
         // 返回格式化的结果

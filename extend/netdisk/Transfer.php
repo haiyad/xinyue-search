@@ -40,36 +40,38 @@ class Transfer
     public function transfer($urlData = [])
     {
         $url = $urlData['url'] ?? '';
-        $config = [
-            'isType' => $urlData['isType'] ?? input('isType') ?? 0,
-            'url' => $url,
-            'code' => $urlData['code'] ?? input('code') ?? '',
-            'expired_type' => $urlData['expired_type'] ?? input('expired_type') ?? 1,
-            'ad_fid' => $urlData['ad_fid'] ?? input('ad_fid') ?? "",
-            'stoken' => $urlData['stoken'] ?? '',
-        ];
+
+        // 如果 URL 为空，返回错误
+        if (empty($url)) {
+            return jerr2('资源地址为空');
+        }
 
         if (strpos($url, '?entry=') !== false) {
             $entry = preg_match('/\?entry=([^&]+)/', $url, $matches) ? $matches[1] : '';
             $url = preg_match('/.*(?=\?entry=)/', $url, $matches) ? $matches[0] : '';
         }
 
+        // 确保 URL 包含协议前缀
+        if (!preg_match('/^https?:\/\//i', $url)) {
+            $url = 'https://' . $url;
+        }
+
         $substring = strstr($url, 's/');
         if ($substring !== false) {
             $pwd_id = substr($substring, 2);
         } else {
-            return jerr2("资源地址格式有误");
+            return jerr2('资源地址格式有误，缺少 s/ 标识');
         }
 
         $url_type = -1;
         $panTypes = config('pan_types');
-        
+
         foreach ($panTypes as $panConfig) {
             $domains = $panConfig['domain'] ?? [];
             if (!is_array($domains)) {
                 $domains = [$domains];
             }
-            
+
             foreach ($domains as $domain) {
                 if (strpos($url, $domain) !== false) {
                     $url_type = $panConfig['id'];
@@ -78,23 +80,38 @@ class Transfer
             }
         }
 
+        if ($url_type === -1) {
+            return jerr2('资源地址格式有误，不支持的网盘类型');
+        }
+
+        // 构建 config 数组，包含 URL（这个会被 BasePan 构造函数使用）
+        $config = [
+            'isType' => $urlData['isType'] ?? input('isType') ?? 0,
+            'url' => $url,  // 重要：这个 URL 会被传递给 BasePan 构造函数
+            'code' => $urlData['code'] ?? input('code') ?? '',
+            'expired_type' => $urlData['expired_type'] ?? input('expired_type') ?? 1,
+            'ad_fid' => $urlData['ad_fid'] ?? input('ad_fid') ?? "",
+            'stoken' => $urlData['stoken'] ?? '',
+        ];
+
+        // 同时设置 $this->url 以保持兼容性
         $this->url = $url;
 
         $className = 'QuarkPan';
-        foreach ($panTypes as $config) {
-            if ($config['id'] == $url_type) {
-                $className = $config['class_name'] ?? 'QuarkPan';
+        foreach ($panTypes as $panConfig) {
+            if ($panConfig['id'] == $url_type) {  // 修复：使用 $panConfig['id'] 而不是 $config['id']
+                $className = $panConfig['class_name'] ?? 'QuarkPan';
                 break;
             }
         }
         $fullClassName = "\\netdisk\\pan\\$className";
-        
+
         if (class_exists($fullClassName)) {
             $pan = new $fullClassName($config);
             return $pan->transfer(strtok($pwd_id, '#'));
         }
-        
-        return jerr2("资源地址格式有误");
+
+        return jerr2('资源地址格式有误，类不存在');
     }
 
 

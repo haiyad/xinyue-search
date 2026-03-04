@@ -1143,11 +1143,11 @@ function encryptObject($object) {
     return $encrypted;
 }
 function decryptObject($encryptedObject) {
-    // 解密密钥
     $key = 'ABCD';
-    // 解密加密后的对象字符串
     $decryptedJson = openssl_decrypt($encryptedObject, 'aes-256-cbc', $key, 0, '1234567890123456');
-    // 将解密后的 JSON 字符串转换回对象
-    $object = json_decode($decryptedJson, true);  // true 转换为关联数组
+    $object = json_decode($decryptedJson, true);
+    if ($object === null) {
+        return $encryptedObject;
+    }
     return $object;
 }

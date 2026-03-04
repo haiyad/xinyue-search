@@ -24,18 +24,50 @@ class BaiduPan extends BasePan
 
     public function transfer($pwd_id)
     {
+        // 步骤1: 初始化网络连接
         $cookie = Config('qfshop.baidu_cookie');
         $network = new \netdisk\pan\BaiduWork($cookie);
 
+        // 步骤2: 获取 bdstoken
         $bdstoken = $network->getBdstoken();
+        if (is_numeric($bdstoken) && $bdstoken != 0) {
+            return jerr2($network->getErrorMessage($bdstoken));
+        }
         $network->setBdstoken($bdstoken);
 
-        $urlParts = parse_url($this->url);
-        $linkUrl = $urlParts['scheme'] . '://' . $urlParts['host'] . $urlParts['path']; // 分享链接
+        // 步骤3: 确保 URL 格式正确
+        $url = $this->url;
+
+        // 如果 URL 为空或不是字符串，返回错误
+        if (empty($url) || !is_string($url)) {
+            return jerr2('资源地址为空或格式错误');
+        }
+
+        // 确保 URL 包含协议前缀
+        if (!preg_match('/^https?:\/\//i', $url)) {
+            $url = 'https://' . $url;
+        }
+
+        $urlParts = parse_url($url);
+
+        // 如果 URL 解析失败，返回错误
+        if ($urlParts === false || empty($urlParts)) {
+            return jerr2('资源地址格式错误');
+        }
+
+        // 构建分享链接，确保所有必要部分都存在
+        $scheme = $urlParts['scheme'] ?? 'https';
+        $host = $urlParts['host'] ?? '';
+        $path = $urlParts['path'] ?? '';
+
+        if (empty($host) || empty($path)) {
+            return jerr2('资源地址格式错误，缺少主机或路径');
+        }
+
+        $linkUrl = $scheme . '://' . $host . $path; // 分享链接
         $passCode = $this->code; // 4位提取码
 
-
-        // 先判断是否有提取码
+        // 步骤4: 验证提取码（如果有）
         if (!empty($passCode)) {
             // 验证提取码
             $randsk = $network->verifyPassCode($linkUrl, $passCode);
@@ -46,10 +78,17 @@ class BaiduPan extends BasePan
             $network->updateBdclnd($randsk);
         }
 
-        // 获取转存参数
+        // 步骤5: 获取转存参数
         $transferParams = $network->getTransferParams($linkUrl);
+
+        // 检查是否返回了错误
         if (is_numeric($transferParams)) {
             return jerr2($network->getErrorMessage($transferParams));
+        }
+
+        // 检查是否返回了调试信息（parseResponse 失败）
+        if (isset($transferParams['error']) && $transferParams['error'] === 'parse_failed') {
+            return jerr2('链接错误：链接失效、缺少提取码、页面结构变化或访问频繁风控');
         }
 
         // 解析返回的参数

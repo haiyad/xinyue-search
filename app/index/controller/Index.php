@@ -54,7 +54,11 @@ class Index extends QfShop
         //热门排行榜数据
         $hotList = [];
         $cacheDir = root_path('runtime/api/cache'); // runtime/cache 目录
+        $excludeCategories = ['软件', '游戏', '书籍', '素材']; // 要隐藏的分类
         foreach ($rankList as $value) {
+            if (in_array($value['name'], $excludeCategories)) {
+                continue;
+            }
             if ($value['is_sys'] == 1 && $value['is_type'] == 0) {
                 $cacheFile = $cacheDir . "ranking_data_{$value['name']}.cache";
                 if (file_exists($cacheFile)) {

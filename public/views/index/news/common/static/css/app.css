@@ -1204,3 +1204,226 @@ a:hover {
 .icon-sousuo:before {
     content: "\e623";
 }
+
+/* 分类页面样式 */
+.categoryBox {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.categoryHeader {
+    text-align: center;
+    padding: 30px 0;
+    border-bottom: 2px solid var(--theme-theme);
+    margin-bottom: 30px;
+}
+
+.categoryHeader h1 {
+    font-size: 32px;
+    color: var(--theme-color);
+    margin: 0 0 10px 0;
+}
+
+.categoryHeader .total {
+    font-size: 16px;
+    color: var(--theme-color);
+    opacity: 0.7;
+}
+
+.categoryContent {
+    display: flex;
+    gap: 30px;
+}
+
+.categoryLeft {
+    width: 250px;
+    flex-shrink: 0;
+}
+
+.categoryMenu {
+    background-color: var(--theme-other_background);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 20px;
+}
+
+.menuTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--theme-color);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--theme-theme);
+}
+
+.menuList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: 8px;
+    color: var(--theme-color);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 15px;
+}
+
+.menu-item .iconfont {
+    margin-right: 10px;
+    font-size: 16px;
+}
+
+.menu-item:hover {
+    background-color: var(--theme-theme);
+    color: var(--theme-other_background);
+    transform: translateX(5px);
+}
+
+.menu-item.active {
+    background-color: var(--theme-theme);
+    color: var(--theme-other_background);
+    font-weight: bold;
+}
+
+.categoryRight {
+    flex: 1;
+    min-width: 0;
+}
+
+.resourceList {
+    background-color: var(--theme-other_background);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.resourceList .list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.resourceList .item {
+    background-color: var(--theme-background);
+    border-radius: 10px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.resourceList .item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: var(--theme-theme);
+}
+
+.resourceList .item .title {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--theme-color);
+    text-decoration: none;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.resourceList .item .title:hover {
+    color: var(--theme-theme);
+}
+
+.resourceList .item .description {
+    font-size: 14px;
+    color: var(--theme-color);
+    opacity: 0.7;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.resourceList .item .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: var(--theme-color);
+    opacity: 0.8;
+}
+
+.resourceList .item .meta span {
+    display: flex;
+    align-items: center;
+}
+
+.resourceList .item .meta .iconfont {
+    margin-right: 5px;
+    font-size: 14px;
+}
+
+.resourceList .item .meta .code strong {
+    color: var(--theme-theme);
+    margin-left: 5px;
+}
+
+.resourceList .item .actions {
+    display: flex;
+    gap: 12px;
+}
+
+.resourceList .item .actions .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.resourceList .item .actions .btn .iconfont {
+    margin-right: 6px;
+    font-size: 14px;
+}
+
+.resourceList .item .actions .btn-detail {
+    background-color: var(--theme-theme);
+    color: var(--theme-other_background);
+}
+
+.resourceList .item .actions .btn-detail:hover {
+    background-color: var(--theme-theme);
+    opacity: 0.9;
+}
+
+.resourceList .item .actions .btn-copy {
+    background-color: var(--theme-background);
+    color: var(--theme-color);
+    border: 1px solid var(--theme-theme);
+}
+
+.resourceList .item .actions .btn-copy:hover {
+    background-color: var(--theme-theme);
+    color: var(--theme-other_background);
+}
+
+.resourceList .pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.resourceList .empty {
+    text-align: center;
+    padding: 60px 20px;
+}

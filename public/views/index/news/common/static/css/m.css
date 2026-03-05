@@ -351,4 +351,117 @@
     .dialogUrlBox{
         width: 90vw;
     }
+
+    /* 分类页面移动端样式 */
+    .categoryBox {
+        padding: 3vw;
+    }
+
+    .categoryHeader {
+        padding: 5vw 0;
+        margin-bottom: 5vw;
+    }
+
+    .categoryHeader h1 {
+        font-size: 6vw;
+    }
+
+    .categoryHeader .total {
+        font-size: 3.5vw;
+    }
+
+    .categoryContent {
+        flex-direction: column;
+        gap: 5vw;
+    }
+
+    .categoryLeft {
+        width: 100%;
+    }
+
+    .categoryMenu {
+        position: static;
+        padding: 4vw;
+    }
+
+    .menuTitle {
+        font-size: 4.5vw;
+        margin-bottom: 3vw;
+        padding-bottom: 2.5vw;
+    }
+
+    .menuList {
+        gap: 1.5vw;
+    }
+
+    .menu-item {
+        padding: 3vw 4vw;
+        font-size: 3.8vw;
+    }
+
+    .menu-item .iconfont {
+        font-size: 4vw;
+        margin-right: 2vw;
+    }
+
+    .categoryRight {
+        width: 100%;
+    }
+
+    .resourceList {
+        padding: 4vw;
+    }
+
+    .resourceList .list {
+        gap: 4vw;
+    }
+
+    .resourceList .item {
+        padding: 4vw;
+    }
+
+    .resourceList .item .title {
+        font-size: 4.5vw;
+        margin-bottom: 2.5vw;
+    }
+
+    .resourceList .item .description {
+        font-size: 3.5vw;
+        margin-bottom: 3vw;
+    }
+
+    .resourceList .item .meta {
+        gap: 3vw;
+        font-size: 3.2vw;
+        margin-bottom: 3vw;
+    }
+
+    .resourceList .item .meta .iconfont {
+        font-size: 3.2vw;
+    }
+
+    .resourceList .item .actions {
+        flex-direction: column;
+        gap: 2vw;
+    }
+
+    .resourceList .item .actions .btn {
+        padding: 2.5vw 4vw;
+        font-size: 3.5vw;
+        width: 100%;
+    }
+
+    .resourceList .item .actions .btn .iconfont {
+        font-size: 3.5vw;
+        margin-right: 1.5vw;
+    }
+
+    .resourceList .pagination {
+        margin-top: 5vw;
+        padding-top: 4vw;
+    }
+
+    .resourceList .empty {
+        padding: 15vw 4vw;
+    }
 }

@@ -351,4 +351,136 @@ class Index extends QfShop
         View::assign('list', $result);
         return View::fetch();
     }
+
+    /**
+     * @description: 资源分类列表
+     * @param {*}
+     * @return {*}
+     */
+    public function category()
+    {
+        $categoryId = input('id', 0);
+        $page = input('page', 1);
+        $pageSize = input('page_size', 20);
+
+        // 确保参数是有效的整数
+        $categoryId = intval($categoryId);
+        $page = max(1, intval($page));
+        $pageSize = max(1, min(100, intval($pageSize)));
+
+        // 获取排行榜分类
+        $rankList = $this->SourceCategoryModel->field('source_category_id,name,image,is_sys,is_type')->where([['status', '=', 0]])->order('sort desc')->select();
+
+        // 获取所有分类
+        $categoryList = $this->SourceCategoryModel->field('source_category_id,name')
+            ->where([['status', '=', 0]])
+            ->order('sort desc')
+            ->select()
+            ->toArray();
+
+        // 查询条件
+        $map = [];
+        $map[] = ['status', '=', 1];
+        $map[] = ['is_delete', '=', 0];
+
+        if ($categoryId > 0) {
+            $map[] = ['source_category_id', '=', $categoryId];
+        }
+
+        // 获取资源列表
+        $result = $this->SourceModel->where($map)
+            ->field('source_id as id,title,url,code,description,create_time as time,is_type,source_category_id')
+            ->order(['create_time' => 'desc'])
+            ->paginate([
+                'list_rows' => $pageSize,
+                'page' => $page,
+            ])
+            ->each(function ($item, $key) {
+                $timestamp = is_numeric($item['time']) ? intval($item['time']) : 0;
+                if ($timestamp > 0) {
+                    $item['times'] = date('Y-m-d H:i', $timestamp);
+                } else {
+                    $item['times'] = '未知时间';
+                }
+                unset($item['time']);
+                return $item;
+            });
+
+        // 获取总数
+        $total = $result->total();
+
+        // 转换为数组供JavaScript使用
+        $listArray = $result->items();
+
+        // 获取当前分类名称
+        $currentCategoryName = '全部';
+        if ($categoryId > 0) {
+            foreach ($categoryList as $category) {
+                if ($category['source_category_id'] == $categoryId) {
+                    $currentCategoryName = $category['name'];
+                    break;
+                }
+            }
+        }
+
+        // 获取网盘类型映射
+        $panTypeMap = [
+            0 => '夸克网盘',
+            1 => '阿里网盘',
+            2 => '百度网盘',
+            3 => 'UC网盘',
+            4 => '迅雷网盘',
+        ];
+
+        // 热门排行榜数据
+        $hotList = [];
+        $cacheDir = root_path('runtime/api/cache'); // runtime/cache 目录
+        foreach ($rankList as $value) {
+            if ($value['is_sys'] == 1 && $value['is_type'] == 0) {
+                $cacheFile = $cacheDir . "ranking_data_{$value['name']}.cache";
+                if (file_exists($cacheFile)) {
+                    $hotList[] = array(
+                        'name' => $value['name'],
+                        'image' => $value['image'],
+                        'list' => json_decode(file_get_contents($cacheFile), true),
+                    );
+                }
+            } else {
+                $list = $this->SourceModel->order(['create_time' => 'desc'])
+                    ->field('title,create_time as time,source_id as id')
+                    ->where($map)
+                    ->where(['source_category_id' => $value['source_category_id']])
+                    ->limit(Config('qfshop.ranking_num') ?? 1)
+                    ->select()->each(function ($item, $key) {
+                        $item['times'] = substr($item['time'], 5, 5);
+                        unset($item['time']);
+                        return $item;
+                    })->toArray();
+                $hotList[] = array(
+                    'name' => $value['name'],
+                    'image' => $value['image'],
+                    'list' => $list,
+                );
+            }
+        }
+
+        // 获取配置
+        $config = config("qfshop");
+
+        View::assign('categoryList', $categoryList);
+        View::assign('list', $result);
+        View::assign('listArray', $listArray);
+        View::assign('total', $total);
+        View::assign('categoryId', $categoryId);
+        View::assign('category_id', $categoryId);
+        View::assign('currentCategoryName', $currentCategoryName);
+        View::assign('panTypeMap', $panTypeMap);
+        View::assign('rankList', $rankList);
+        View::assign('hotList', $hotList);
+        View::assign('config', $config);
+        View::assign('seo_title', $currentCategoryName . ' - 资源列表');
+        View::assign('seo_keywords', $currentCategoryName);
+        View::assign('seo_description', $currentCategoryName . '资源列表');
+        return View::fetch('/news/category');
+    }
 }
